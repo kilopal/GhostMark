@@ -13,4 +13,16 @@ With the enforcement of the EU AI Act (Article 50), frontier AI models like Clau
 ## Build Instructions
 1. Install Rust (`cargo`)
 2. Run `cargo build --release`
-3. Execute `./target/release/ghostmark clean <target_file>`
+3. Execute `./target/release/ghostmark clean-text <target>`
+
+## Usage
+
+**Clean text directly from the command line:**
+```bash
+ghostmark clean-text "Text with hidden \u200B marks"
+```
+
+**Clean text from a file:**
+```bash
+ghostmark clean-text input.txt --file --output clean.txt
+```

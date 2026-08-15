@@ -5,8 +5,8 @@ GhostMark aims to provide a reliable, memory-safe utility for completely strippi
 
 ## Core Modules (Planned)
 
-### 1. `text_scrubber`
-Focuses on removing zero-width characters (e.g. `U+200B` to `U+200D`) and other invisible unicode markers injected by models like Claude to track output.
+### 1. `text_scrubber` (Completed)
+Strips zero-width characters (`U+200B` to `U+200F`), the zero-width no-break space (`U+FEFF`), and the Unicode Tags Block (`U+E0000` - `U+E007F`). Designed to run locally with zero network calls for maximum opsec.
 
 ### 2. `image_c2pa_stripper`
 Safely parses image headers (PNG chunks, JPEG EXIF data) to remove cryptographic C2PA metadata without destroying the image bytes or risking buffer overflows.
