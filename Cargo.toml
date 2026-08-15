@@ -1,6 +1,6 @@
 [package]
 name = "ghostmark"
-version = "0.1.0"
+version = "0.3.0"
 edition = "2021"
 description = "A blazing-fast, memory-safe tool to strip AI provenance watermarks (C2PA & Unicode) from text and images."
 
@@ -8,3 +8,8 @@ description = "A blazing-fast, memory-safe tool to strip AI provenance watermark
 clap = { version = "4.4", features = ["derive"] }
 img-parts = "0.3.0"
 bytes = "1.5.0"
+axum = "0.7"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"

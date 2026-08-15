@@ -7,7 +7,15 @@ use std::fs;
 /// from JPEG and PNG images without modifying the underlying pixel data.
 pub fn strip_image_metadata(input_path: &str, output_path: &str) -> Result<(), Box<dyn std::error::Error>> {
     let input_bytes = fs::read(input_path)?;
-    let bytes = Bytes::from(input_bytes);
+    let cleaned = strip_image_bytes(&input_bytes)?;
+    fs::write(output_path, cleaned)?;
+    Ok(())
+}
+
+/// Strips metadata from raw image bytes in memory. Used by the HTTP proxy
+/// to avoid touching the filesystem for maximum speed and security.
+pub fn strip_image_bytes(raw: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let bytes = Bytes::from(raw.to_vec());
 
     // Try parsing as JPEG
     if let Ok(mut jpeg) = Jpeg::from_bytes(bytes.clone()) {
@@ -24,8 +32,7 @@ pub fn strip_image_metadata(input_path: &str, output_path: &str) -> Result<(), B
 
         let mut out = Vec::new();
         jpeg.encoder().write_to(&mut out)?;
-        fs::write(output_path, out)?;
-        return Ok(());
+        return Ok(out);
     }
 
     // Try parsing as PNG
@@ -40,8 +47,7 @@ pub fn strip_image_metadata(input_path: &str, output_path: &str) -> Result<(), B
 
         let mut out = Vec::new();
         png.encoder().write_to(&mut out)?;
-        fs::write(output_path, out)?;
-        return Ok(());
+        return Ok(out);
     }
 
     Err("Unsupported file format or corrupted image. Only JPEG and PNG are supported.".into())
@@ -51,11 +57,9 @@ pub fn strip_image_metadata(input_path: &str, output_path: &str) -> Result<(), B
 mod tests {
     use super::*;
 
-    // Note: Comprehensive byte-level tests would go here.
-    // For now, we rely on the type-system guarantees of `img-parts` that chunks are dropped.
     #[test]
     fn test_image_stripper_signature() {
-        // Assert that the function exists and compiles correctly
         let _ = strip_image_metadata;
+        let _ = strip_image_bytes;
     }
 }
