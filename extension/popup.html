@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GhostMark</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #212121; /* ChatGPT dark gray */
+      --bg-input: #2f2f2f;
+      --text: #ececec;
+      --text-muted: #b4b4b4;
+      --border: #424242;
+      --accent: #ececec;
+      --user-bubble: #2f2f2f;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      width: 420px;
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 550px;
+    }
+
+    /* Header */
+    .header {
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg);
+      z-index: 10;
+    }
+
+    .title {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text);
+    }
+
+    .title-icon {
+      background: #fff;
+      color: #000;
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .status {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 500;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #3b82f6; /* Ready blue */
+    }
+    .state-success .status-dot { background: #10b981; }
+    .state-error .status-dot { background: #ef4444; }
+
+    /* Chat Area */
+    .chat-container {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      scroll-behavior: smooth;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-width: 90%;
+      animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .message.user {
+      align-self: flex-end;
+    }
+
+    .message.assistant {
+      align-self: flex-start;
+      max-width: 95%;
+    }
+
+    .message-content {
+      font-size: 15px;
+      line-height: 1.6;
+      word-wrap: break-word;
+    }
+
+    .message.user .message-content {
+      background-color: var(--user-bubble);
+      padding: 12px 18px;
+      border-radius: 20px;
+      border-bottom-right-radius: 4px;
+      color: var(--text);
+    }
+
+    .message.assistant .message-content {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    .assistant-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: conic-gradient(from 180deg at 50% 50%, #2a8af6 0deg, #a853ba 180deg, #e92a67 360deg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+
+    .assistant-text {
+      flex: 1;
+      padding-top: 2px;
+    }
+
+    /* Input Area */
+    .input-container {
+      padding: 10px 20px 24px 20px;
+      background: var(--bg);
+    }
+
+    .input-wrapper {
+      background-color: var(--bg-input);
+      border-radius: 24px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: flex-end;
+      gap: 12px;
+    }
+
+    textarea {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 15px;
+      line-height: 1.5;
+      resize: none;
+      height: 22px; /* One line */
+      max-height: 150px;
+      outline: none;
+      padding: 4px 4px;
+      overflow-y: hidden;
+    }
+
+    textarea::placeholder {
+      color: #8e8ea0;
+    }
+
+    /* Submit Button */
+    .submit-btn {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      flex-shrink: 0;
+      margin-bottom: 2px;
+    }
+
+    .submit-btn:hover {
+      opacity: 0.8;
+    }
+
+    .submit-btn svg {
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #565656; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #71717a; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1 class="title">
+      <div class="title-icon">👻</div>
+      GhostMark
+    </h1>
+    <div class="status" id="statusBox">
+      <div class="status-dot"></div>
+      <span id="status">WASM Ready</span>
+    </div>
+  </div>
+
+  <div class="chat-container" id="chatArea">
+    <!-- Initial Greeting -->
+    <div class="message assistant">
+      <div class="message-content">
+        <div class="assistant-icon">👻</div>
+        <div class="assistant-text">
+          Hi! I'm GhostMark. Paste any text generated by an AI here, and I will mathematically scrub all hidden Unicode watermarks locally in your browser.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="input-container">
+    <div class="input-wrapper">
+      <textarea id="inputText" placeholder="Paste text to scrub..."></textarea>
+      <button class="submit-btn" id="scrubBtn" title="Scrub & Copy">
+        <svg viewBox="0 0 24 24">
+          <line x1="12" y1="19" x2="12" y2="5"></line>
+          <polyline points="5 12 12 5 19 12"></polyline>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <script type="module" src="popup.js"></script>
+  
+  <script>
+    // Auto-resize textarea like ChatGPT
+    const tx = document.getElementById('inputText');
+    tx.setAttribute('style', 'height:' + (tx.scrollHeight) + 'px;overflow-y:hidden;');
+    tx.addEventListener("input", OnInput, false);
+
+    function OnInput() {
+      this.style.height = '22px';
+      this.style.height = (this.scrollHeight) + 'px';
+      if(this.scrollHeight > 150) {
+        this.style.overflowY = 'auto';
+      } else {
+        this.style.overflowY = 'hidden';
+      }
+    }
+  </script>
+</body>
+</html>

@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-08-15
+### Added
+- **Browser Extension**: A complete Chrome/Edge extension with a premium ChatGPT-style UI.
+- **WebAssembly (WASM)**: Compiled the core engine to WASM for 0-latency, offline, in-browser sanitization.
+- **Cargo Workspace**: Refactored the entire repository into `core`, `cli`, and `wasm` modules for clean architecture.
+
 ## [0.3.0] - 2026-08-15
 ### Added
 - Built `proxy` module: a high-concurrency HTTP server powered by `axum` + `tokio`.
