@@ -1,4 +1,5 @@
 mod text_scrubber;
+mod image_stripper;
 
 use clap::{Parser, Subcommand};
 use std::fs;
@@ -24,6 +25,16 @@ enum Commands {
         /// Optional output file path (if not provided, prints to stdout)
         #[arg(short, long)]
         output: Option<String>,
+    },
+    /// Strips cryptographic C2PA and tracking metadata from JPEG/PNG images
+    CleanImage {
+        /// The path to the input image
+        #[arg(short, long)]
+        input: String,
+
+        /// The path to save the cleaned output image
+        #[arg(short, long)]
+        output: String,
     },
 }
 
@@ -51,6 +62,15 @@ fn main() {
                 println!("Successfully cleaned text and saved to {}", out_path);
             } else {
                 println!("{}", clean);
+            }
+        },
+        Commands::CleanImage { input, output } => {
+            match image_stripper::strip_image_metadata(input, output) {
+                Ok(_) => println!("✅ Successfully stripped all tracking metadata from {} -> {}", input, output),
+                Err(e) => {
+                    eprintln!("❌ Error stripping image metadata: {}", e);
+                    std::process::exit(1);
+                }
             }
         }
     }
