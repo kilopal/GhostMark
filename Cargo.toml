@@ -5,3 +5,4 @@ edition = "2021"
 description = "A blazing-fast, memory-safe tool to strip AI provenance watermarks (C2PA & Unicode) from text and images."
 
 [dependencies]
+clap = { version = "4.4", features = ["derive"] }
