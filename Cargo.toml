@@ -1,0 +1,7 @@
+[package]
+name = "ghostmark"
+version = "0.1.0"
+edition = "2021"
+description = "A blazing-fast, memory-safe tool to strip AI provenance watermarks (C2PA & Unicode) from text and images."
+
+[dependencies]
