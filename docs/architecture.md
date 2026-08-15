@@ -1,15 +1,24 @@
 # GhostMark Architecture
 
-## The Goal
-GhostMark aims to provide a reliable, memory-safe utility for completely stripping AI-generated provenance data (such as those mandated by the EU AI Act).
+GhostMark is built as a highly modular, memory-safe **Cargo Workspace** containing three distinct crates, plus a browser extension.
 
-## Core Modules (Planned)
+## 1. `ghostmark-core`
+The raw, foundational math engine. 
+- **Dependencies**: Only lightweight parsing crates (`img-parts`, `bytes`).
+- **Network**: Zero external I/O.
+- **Role**: Contains `text_scrubber` (for Unicode/Zero-width metadata) and `image_stripper` (for C2PA/Exif manipulation). It operates entirely on raw strings and byte arrays to ensure maximum safety, speed, and cross-platform compatibility (including WASM).
 
-### 1. `text_scrubber` (Completed)
-Strips zero-width characters (`U+200B` to `U+200F`), the zero-width no-break space (`U+FEFF`), and the Unicode Tags Block (`U+E0000` - `U+E007F`). Designed to run locally with zero network calls for maximum opsec.
+## 2. `ghostmark` (CLI / HTTP Proxy)
+The primary backend and terminal application.
+- **Dependencies**: Imports `ghostmark-core`, alongside heavy networking crates (`axum`, `tokio`, `clap`).
+- **Role**: Exposes a high-performance HTTP server (`/clean/text`, `/clean/image`) for real-time sanitization of LLM API traffic, and handles file-system I/O for the terminal CLI (`ghostmark clean-text`).
 
-### 2. `image_c2pa_stripper` (Completed)
-Uses the `img-parts` crate to memory-safely parse PNG and JPEG byte streams. It explicitly allows only critical rendering chunks (like `IHDR` and `IDAT`), completely stripping out `APP1` (Exif), `APP11` (C2PA/JUMBF), `c2pa`, and `iTXt` metadata chunks without modifying the visual pixel data.
+## 3. `ghostmark-wasm`
+The WebAssembly bindings.
+- **Dependencies**: Imports `ghostmark-core`, alongside `wasm-bindgen`.
+- **Role**: Compiles the Rust engine into a `.wasm` binary, exposing `sanitize_text_wasm` and `strip_image_bytes_wasm` to Javascript for completely local, offline execution inside the browser.
 
-### 3. `proxy_middleware` (Completed)
-High-concurrency HTTP proxy built on `axum` + `tokio`. Exposes `/clean/text`, `/clean/image`, `/inspect/text`, and `/health` endpoints. Processes all data in-memory (zero filesystem I/O) for maximum speed and security. Can be deployed as a standalone microservice or sidecar container.
+## 4. `extension/`
+A Manifest V3 browser extension for Chrome/Edge/Brave.
+- **Design**: Built with a sleek, minimalist, ChatGPT-style chat interface using vanilla HTML/CSS.
+- **Role**: Connects directly to the `ghostmark-wasm` package (`extension/pkg/`). Intercepts user inputs, passes them to the local WASM engine, and copies the mathematically scrubbed payload directly to the user's clipboard in milliseconds without ever communicating with an external API.
