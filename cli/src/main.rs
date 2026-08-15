@@ -1,5 +1,5 @@
-mod text_scrubber;
-mod image_stripper;
+use ghostmark_core::text_scrubber;
+use ghostmark_core::image_stripper;
 mod proxy;
 
 use clap::{Parser, Subcommand};

@@ -11,8 +11,8 @@ use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::time::Instant;
 
-use crate::text_scrubber;
-use crate::image_stripper;
+use ghostmark_core::text_scrubber;
+use ghostmark_core::image_stripper;
 
 // ─── Request / Response Models ───────────────────────────────────────────────
 

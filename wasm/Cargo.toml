@@ -1,0 +1,12 @@
+[package]
+name = "ghostmark-wasm"
+version.workspace = true
+edition.workspace = true
+description = "WebAssembly bindings for GhostMark"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+ghostmark-core = { path = "../core" }
+wasm-bindgen = "0.2"
