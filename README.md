@@ -26,3 +26,8 @@ ghostmark clean-text "Text with hidden \u200B marks"
 ```bash
 ghostmark clean-text input.txt --file --output clean.txt
 ```
+
+**Clean tracking metadata (C2PA/Exif) from an image:**
+```bash
+ghostmark clean-image --input watermarked.png --output safe.png
+```

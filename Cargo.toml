@@ -6,3 +6,5 @@ description = "A blazing-fast, memory-safe tool to strip AI provenance watermark
 
 [dependencies]
 clap = { version = "4.4", features = ["derive"] }
+img-parts = "0.3.0"
+bytes = "1.5.0"
