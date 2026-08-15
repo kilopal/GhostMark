@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-08-15
+### Added
+- Built `proxy` module: a high-concurrency HTTP server powered by `axum` + `tokio`.
+- Added `POST /clean/text` endpoint for stripping Unicode watermarks from JSON payloads.
+- Added `POST /inspect/text` endpoint for detecting and reporting suspicious watermark characters with exact codepoints and positions.
+- Added `POST /clean/image` endpoint for stripping C2PA/Exif metadata from base64-encoded images.
+- Added `GET /health` endpoint for service health checks.
+- Added `serve` CLI subcommand (`ghostmark serve --port 8080`).
+- Refactored `image_stripper` to expose `strip_image_bytes()` for zero-filesystem in-memory processing.
+
 ## [0.2.0] - 2026-08-15
 ### Added
 - Implemented `image_c2pa_stripper` module.

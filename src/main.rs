@@ -1,5 +1,6 @@
 mod text_scrubber;
 mod image_stripper;
+mod proxy;
 
 use clap::{Parser, Subcommand};
 use std::fs;
@@ -36,9 +37,20 @@ enum Commands {
         #[arg(short, long)]
         output: String,
     },
+    /// Starts the GhostMark HTTP proxy server
+    Serve {
+        /// Host address to bind to
+        #[arg(long, default_value = "127.0.0.1")]
+        host: String,
+
+        /// Port to listen on
+        #[arg(short, long, default_value_t = 8080)]
+        port: u16,
+    },
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let cli = Cli::parse();
 
     match &cli.command {
@@ -72,6 +84,9 @@ fn main() {
                     std::process::exit(1);
                 }
             }
+        },
+        Commands::Serve { host, port } => {
+            proxy::start_server(host, *port).await;
         }
     }
 }
