@@ -51,11 +51,20 @@ Because this extension uses bleeding-edge WebGPU features, it is not yet on the 
 
 ## 🛠️ Architecture
 
-GhostMark pushes the boundaries of Chrome Extension Manifest V3 limits:
+GhostMark is a multi-platform project built entirely in Rust and compiled to different targets:
 
-- **Frontend:** Pure Vanilla JS + HTML (Zero bloat).
-- **WASM Engine:** Rust compiled to WebAssembly for sub-millisecond string parsing.
-- **WebLLM Offscreen Document:** Because MV3 Background Service Workers cannot access the GPU, we dynamically spawn a hidden HTML page (`offscreen.html`) which executes `@mlc-ai/web-llm` with WebGPU hardware acceleration. 
+- **`core/`**: The core Rust library that implements the sub-millisecond string parsing and homoglyph normalization algorithms.
+- **`cli/`**: A lightning-fast Command Line Interface for developers to scrub watermarks from the terminal or bash scripts.
+- **`wasm/`**: Rust compiled to WebAssembly, exposing the core scrubbing algorithms to JavaScript.
+- **`extension/`**: The Chrome Extension front-end that leverages the WASM engine for fast scrubbing, and a WebGPU offscreen document for heavy LLM statistical rewriting.
+
+### Using the CLI
+
+If you prefer the terminal, you can use the GhostMark CLI to instantly scrub text locally:
+```bash
+cd cli
+cargo run -- "Your watermarked text here"
+```
 
 ## 🛡️ Privacy First
 
