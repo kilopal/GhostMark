@@ -23,3 +23,7 @@ Thumbs.db
 ROADMAP.md
 simulate_anthropic.py
 watermarked_output.txt
+
+# Extension build files
+extension/node_modules/
+extension/dist/

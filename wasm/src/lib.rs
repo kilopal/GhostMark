@@ -3,8 +3,8 @@ use ghostmark_core::text_scrubber;
 use ghostmark_core::image_stripper;
 
 #[wasm_bindgen]
-pub fn sanitize_text_wasm(input: &str) -> String {
-    text_scrubber::sanitize_text(input)
+pub fn sanitize_text_wasm(input: &str, aggressive: bool) -> String {
+    ghostmark_core::text_scrubber::sanitize_text(input, aggressive)
 }
 
 #[wasm_bindgen]
