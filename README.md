@@ -79,7 +79,7 @@ cargo run -p ghostmark -- clean-text "Your watermarked text here"
 ```
 
 **Batch Cleaning:**
-You can scrub an entire directory of files (`.txt`, `.json`, `.jpg`, `.png`, `.pdf`, `.docx`, etc) in-place:
+You can scrub an entire directory of files (`.txt`, `.json`, `.jpg`, `.png`, `.bmp`, `.gif`, `.pdf`, `.docx`, etc) in-place:
 ```bash
 cargo run -p ghostmark -- batch-clean --dir ./my-dataset/
 ```

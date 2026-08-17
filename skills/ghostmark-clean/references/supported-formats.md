@@ -16,6 +16,8 @@
 | `.jpg` / `.jpeg` | API or CLI | EXIF, C2PA manifests, XMP, ICC profiles, IPTC |
 | `.png` | API or CLI | C2PA manifests, tEXt/iTXt/zTXt chunks, XMP |
 | `.webp` | API or CLI | EXIF, XMP, C2PA manifests |
+| `.bmp` | API or CLI | Trailing bytes appended after declared file size |
+| `.gif` | API or CLI | Trailing bytes appended after GIF trailer (0x3B) |
 
 ## Document Formats
 
