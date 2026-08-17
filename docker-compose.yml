@@ -1,0 +1,33 @@
+# ─────────────────────────────────────────────────────────────
+# GhostMark — Docker Compose
+#
+# Usage:
+#   docker compose up -d          # Start the API server
+#   docker compose logs -f        # Stream logs
+#   docker compose down           # Stop and remove containers
+#
+# The API will be available at http://localhost:8080
+# ─────────────────────────────────────────────────────────────
+
+services:
+  ghostmark:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ghostmark-api
+    ports:
+      - "${GHOSTMARK_PORT:-8080}:8080"
+    environment:
+      - RUST_LOG=${RUST_LOG:-info}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "1.0"

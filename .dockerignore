@@ -1,0 +1,12 @@
+target/
+.git/
+extension/node_modules/
+extension/dist/
+*.md
+!README.md
+LICENSE
+.DS_Store
+Thumbs.db
+simulate_anthropic.py
+watermarked_output.txt
+docs/

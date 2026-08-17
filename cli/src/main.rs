@@ -1,10 +1,10 @@
 use ghostmark_core::text_scrubber;
 use ghostmark_core::image_stripper;
+use ghostmark_core::document_stripper;
 mod proxy;
 
 use clap::{Parser, Subcommand};
 use std::fs;
-use std::path::Path;
 use walkdir::WalkDir;
 use serde_json::json;
 
@@ -138,6 +138,22 @@ async fn main() {
                         if image_stripper::strip_image_metadata(path_str, path_str).is_ok() {
                             println!("✅ Stripped image metadata: {}", path_str);
                             cleaned_files += 1;
+                        }
+                    } else if ext == "pdf" {
+                        if let Ok(bytes) = fs::read(path) {
+                            if let Ok(clean) = document_stripper::strip_pdf_metadata(&bytes) {
+                                fs::write(path, clean).unwrap_or_else(|e| eprintln!("Failed to write {}: {}", path.display(), e));
+                                println!("✅ Stripped PDF metadata: {}", path.display());
+                                cleaned_files += 1;
+                            }
+                        }
+                    } else if ext == "docx" {
+                        if let Ok(bytes) = fs::read(path) {
+                            if let Ok(clean) = document_stripper::strip_docx_metadata(&bytes) {
+                                fs::write(path, clean).unwrap_or_else(|e| eprintln!("Failed to write {}: {}", path.display(), e));
+                                println!("✅ Stripped DOCX metadata: {}", path.display());
+                                cleaned_files += 1;
+                            }
                         }
                     }
                 }
