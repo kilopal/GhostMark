@@ -7,7 +7,7 @@ export default defineConfig({
     outDir: 'dist',
     rollupOptions: {
       input: {
-        offscreen: resolve(__dirname, 'offscreen.js')
+        popup: resolve(__dirname, 'popup.js')
       },
       output: {
         entryFileNames: '[name].bundle.js'

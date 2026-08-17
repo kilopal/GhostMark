@@ -20,5 +20,6 @@ The WebAssembly bindings.
 
 ## 4. `extension/`
 A Manifest V3 browser extension for Chrome/Edge/Brave.
-- **Design**: Built with a sleek, minimalist, ChatGPT-style chat interface using vanilla HTML/CSS.
+- **Design**: Card-based feed layout with structured result cards, built with vanilla HTML/CSS. Uses a refined dark color system and intentional micro-animations.
+- **AI Engine**: Uses `@huggingface/transformers` with `onnx-community/Llama-3.2-1B-Instruct` via ONNX WASM for CPU-based text rewriting. No WebGPU required — runs on any device. The model (~800MB - 1.5GB) is downloaded once and cached by the browser.
 - **Role**: Connects directly to the `ghostmark-wasm` package (`extension/pkg/`). Intercepts user inputs, passes them to the local WASM engine, and copies the mathematically scrubbed payload directly to the user's clipboard in milliseconds without ever communicating with an external API.

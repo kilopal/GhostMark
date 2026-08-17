@@ -4,19 +4,28 @@
   "version": "0.4.0",
   "description": "Strip AI provenance watermarks locally in your browser.",
   "action": {
-    "default_popup": "popup.html"
+    "default_title": "Open GhostMark"
+  },
+  "side_panel": {
+    "default_path": "popup.html"
   },
   "permissions": [
     "activeTab",
     "clipboardWrite",
     "clipboardRead",
     "storage",
-    "offscreen",
-    "unlimitedStorage"
+    "unlimitedStorage",
+    "sidePanel",
+    "contextMenus"
   ],
   "host_permissions": [
     "*://*.huggingface.co/*",
-    "https://raw.githubusercontent.com/*"
+    "*://*.hf.co/*",
+    "https://cdn-lfs.huggingface.co/*",
+    "https://cdn-lfs-us-1.huggingface.co/*",
+    "https://raw.githubusercontent.com/*",
+    "http://localhost:11434/*",
+    "http://127.0.0.1:11434/*"
   ],
   "background": {
     "service_worker": "background.js",

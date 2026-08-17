@@ -1,52 +1,26 @@
-// Path to the offscreen document
-const OFFSCREEN_DOCUMENT_PATH = '/offscreen.html';
+chrome.sidePanel
+  .setPanelBehavior({ openPanelOnActionClick: true })
+  .catch((error) => console.error(error));
 
-// Helper to ensure the offscreen document exists
-async function setupOffscreenDocument(path) {
-  // Check if we already have an offscreen document
-  const existingContexts = await chrome.runtime.getContexts({
-    contextTypes: ['OFFSCREEN_DOCUMENT'],
-    documentUrls: [chrome.runtime.getURL(path)]
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.create({
+    id: "ghostmark-scrub",
+    title: "Scrub with GhostMark",
+    contexts: ["selection"]
   });
+});
 
-  if (existingContexts.length > 0) {
-    return;
-  }
-
-  // Create document
-  await chrome.offscreen.createDocument({
-    url: path,
-    reasons: ['DOM_PARSER'], // 'WORKERS' is invalid, use 'DOM_PARSER' as a general fallback for running JS
-    justification: 'Run WebGPU WebLLM engine for AI text rewriting'
-  });
-}
-
-// Handle messages from popup.js
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'paraphrase') {
-    (async () => {
-      try {
-        await setupOffscreenDocument(OFFSCREEN_DOCUMENT_PATH);
-        
-        // Forward the message to the offscreen document
-        chrome.runtime.sendMessage({
-          action: 'paraphrase_offscreen',
-          text: request.text
-        }, (response) => {
-          if (chrome.runtime.lastError) {
-            console.error("Offscreen error:", chrome.runtime.lastError);
-            sendResponse({ success: false, error: chrome.runtime.lastError.message });
-          } else {
-            // Forward the offscreen response back to popup
-            sendResponse(response);
-          }
-        });
-      } catch (err) {
-        console.error("Setup offscreen error:", err);
-        sendResponse({ success: false, error: err.toString() });
-      }
-    })();
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === "ghostmark-scrub") {
+    // Open the side panel for the current window
+    chrome.sidePanel.open({ windowId: tab.windowId });
     
-    return true; // Keep channel open
+    // Give the panel a moment to initialize if it wasn't open, then send the text
+    setTimeout(() => {
+      chrome.runtime.sendMessage({
+        action: "scrubText",
+        text: info.selectionText
+      });
+    }, 800);
   }
 });
