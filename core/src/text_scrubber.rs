@@ -486,6 +486,48 @@ fn pass_strip_ai_padding(input: &str) -> String {
     text
 }
 
+// ==================== PASS 7: HOMOGLYPH PERTURBATION ====================
+
+/// Applies Cyrillic homoglyphs and zero-width non-joiners to the text
+/// to break AI tokenizers and sub-word chunking algorithms.
+pub fn apply_homoglyphs(input: &str) -> String {
+    let mut result = String::with_capacity(input.len() + input.len() / 5);
+    let seed = input.len() as u32 ^ 0xCAFE;
+    let mut rng = Rng::new(seed);
+    
+    for c in input.chars() {
+        // 15% chance to swap with a Cyrillic homoglyph
+        let replacement = if rng.next_float() < 0.15 {
+            match c {
+                'a' => 'а', // U+0430
+                'c' => 'с', // U+0441
+                'e' => 'е', // U+0435
+                'o' => 'о', // U+043E
+                'p' => 'р', // U+0440
+                'x' => 'х', // U+0445
+                'y' => 'у', // U+0443
+                'A' => 'А', // U+0410
+                'C' => 'С', // U+0421
+                'E' => 'Е', // U+0415
+                'O' => 'О', // U+041E
+                'P' => 'Р', // U+0420
+                'X' => 'Х', // U+0425
+                _ => c,
+            }
+        } else {
+            c
+        };
+        result.push(replacement);
+        
+        // 5% chance to inject an invisible zero-width non-joiner 
+        if c != ' ' && rng.next_float() < 0.05 {
+            result.push('\u{200C}');
+        }
+    }
+    
+    result
+}
+
 // ==================== TESTS ====================
 
 #[cfg(test)]

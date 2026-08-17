@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.0] - 2026-08-18
+### Added
+- **Docker Support**: Added multi-stage `Dockerfile` and `docker-compose.yml` for instant self-hosted deployments. The final image is under 80 MB thanks to a `debian:bookworm-slim` runtime stage.
+- **PDF Metadata Stripping**: New `document_stripper::strip_pdf_metadata()` in `ghostmark-core` using `lopdf`. Strips the `/Info` dictionary and all XMP `/Metadata` streams from PDF files.
+- **DOCX Metadata Stripping**: New `document_stripper::strip_docx_metadata()` in `ghostmark-core` using the `zip` crate. Removes `docProps/` and `customXml/` entries from DOCX archives.
+- **CLI Batch Support**: The `batch-clean` subcommand now automatically detects and processes `.pdf` and `.docx` files alongside text and images.
+- **Docker Docs**: Added `docs/docker.md` with deployment guide, configuration, and API examples.
+
+## [0.8.0] - 2026-08-17
+### Added
+- **Ollama CLI Support**: Added `ollama` subcommand to the CLI to seamlessly rewrite local text using an Ollama server before injecting homoglyphs.
+- **Batch Processing**: Added `batch-clean` subcommand to the CLI to recursively scrub all text, json, md, and image files in a directory in-place.
+- **Core Homoglyphs**: Ported the Cyrillic homoglyph perturbation logic from the JS extension into the core Rust library (`ghostmark_core::text_scrubber::apply_homoglyphs`).
+
+### Changed
+- **WASM Optimization**: Switched to `wee_alloc` and added a `[profile.release]` targeting WASM size optimization (`opt-level = "z"`, `codegen-units = 1`), massively reducing memory footprint in the browser extension.
+
 ## [0.7.0] - 2026-08-17
 ### Added
 - **Ollama Mode**: Introduced an optional toggle to offload heavy AI rewriting to a local Ollama server (`http://localhost:11434`), allowing users to run massive 10B+ parameter models natively on their GPU for instant processing speeds.

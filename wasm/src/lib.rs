@@ -2,6 +2,9 @@ use wasm_bindgen::prelude::*;
 use ghostmark_core::text_scrubber;
 use ghostmark_core::image_stripper;
 
+#[global_allocator]
+static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+
 #[wasm_bindgen]
 pub fn sanitize_text_wasm(input: &str, aggressive: bool) -> String {
     ghostmark_core::text_scrubber::sanitize_text(input, aggressive)

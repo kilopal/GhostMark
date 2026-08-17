@@ -91,7 +91,7 @@ async fn health() -> impl IntoResponse {
 async fn clean_text(Json(payload): Json<CleanTextRequest>) -> impl IntoResponse {
     let start = Instant::now();
     let original_len = payload.text.len();
-    let cleaned = text_scrubber::sanitize_text(&payload.text);
+    let cleaned = text_scrubber::sanitize_text(&payload.text, false);
     let cleaned_len = cleaned.len();
     let elapsed = start.elapsed().as_micros();
 
