@@ -1,0 +1,11 @@
+You are working on GhostMark, a Rust-based tool for stripping AI provenance watermarks.
+
+When the user asks you to clean text or strip metadata from files, use the GhostMark skill at `skills/ghostmark-clean/SKILL.md`. Read it for full API documentation and workflow instructions.
+
+Quick reference:
+- Start the server: `cargo run -p ghostmark -- serve` or `docker compose up -d`
+- Health check: `GET http://127.0.0.1:8080/health`
+- Clean text: `POST http://127.0.0.1:8080/clean/text` with `{"text": "..."}`
+- Inspect text: `POST http://127.0.0.1:8080/inspect/text` with `{"text": "..."}`
+- Clean image: `POST http://127.0.0.1:8080/clean/image` with `{"file": "<base64>", "name": "filename.jpg"}`
+- Batch clean: `ghostmark batch-clean --dir ./path/`

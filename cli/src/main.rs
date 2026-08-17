@@ -132,7 +132,7 @@ async fn main() {
                                 cleaned_files += 1;
                             }
                         }
-                    } else if ext == "png" || ext == "jpg" || ext == "jpeg" || ext == "webp" {
+                    } else if ext == "png" || ext == "jpg" || ext == "jpeg" || ext == "webp" || ext == "bmp" || ext == "gif" {
                         // Pass same input and output path for in-place edit
                         let path_str = path.to_str().unwrap();
                         if image_stripper::strip_image_metadata(path_str, path_str).is_ok() {
