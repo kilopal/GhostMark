@@ -75,8 +75,19 @@ GhostMark is a multi-platform project built entirely in Rust and compiled to dif
 
 If you prefer the terminal, you can use the GhostMark CLI to instantly scrub text locally:
 ```bash
-cd cli
-cargo run -- "Your watermarked text here"
+cargo run -p ghostmark -- clean-text "Your watermarked text here"
+```
+
+**Batch Cleaning:**
+You can scrub an entire directory of files (`.txt`, `.json`, `.jpg`, `.png`, etc) in-place:
+```bash
+cargo run -p ghostmark -- batch-clean --dir ./my-dataset/
+```
+
+**Ollama Integration:**
+Pipe text to a local Ollama model for deep rewriting, then apply mathematical homoglyphs to output 100% undetectable text:
+```bash
+cargo run -p ghostmark -- ollama --file --input ./draft.txt --output ./clean.txt --model "llama3.2"
 ```
 
 ## 🛡️ Privacy First

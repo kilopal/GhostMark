@@ -10,3 +10,4 @@ crate-type = ["cdylib"]
 [dependencies]
 ghostmark-core = { path = "../core" }
 wasm-bindgen = "0.2"
+wee_alloc = "0.4.5"

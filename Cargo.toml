@@ -15,3 +15,5 @@ description = "A blazing-fast, memory-safe tool to strip AI provenance watermark
 [profile.release]
 opt-level = "z" # Optimize for size (critical for WASM)
 lto = true
+codegen-units = 1
+panic = "abort"
