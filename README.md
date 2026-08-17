@@ -90,6 +90,19 @@ Pipe text to a local Ollama model for deep rewriting, then apply mathematical ho
 cargo run -p ghostmark -- ollama --file --input ./draft.txt --output ./clean.txt --model "llama3.2"
 ```
 
+## 🤖 Agent Skills (Cursor / Windsurf / Cline)
+
+GhostMark ships with built-in AI agent skills. If you open this project in **Cursor**, **Windsurf**, **Cline**, or any compatible AI IDE, the agent automatically learns how to use the GhostMark API.
+
+Just start the server and ask your AI to clean text or images:
+
+```
+> "Clean the watermarks from draft.txt"
+> "Strip metadata from all images in ./assets/"
+```
+
+See the full [Agent Skills Guide](docs/agent-skills.md).
+
 ## 🐳 Docker Deployment
 
 Self-host the GhostMark API server instantly with Docker:

@@ -1,0 +1,32 @@
+# GhostMark — Cursor Rules
+
+## Project Overview
+GhostMark is a Rust workspace that strips AI provenance watermarks from text and files.
+It is built as a multi-target project: `core/` (library), `cli/` (binary), `wasm/` (WebAssembly), and `extension/` (Chrome Extension).
+
+## Architecture
+- **`core/`** — Pure Rust library. All stripping logic lives here:
+  - `text_scrubber.rs` — Unicode watermark removal, homoglyph injection
+  - `image_stripper.rs` — C2PA/EXIF/XMP metadata stripping for JPEG/PNG/WebP
+  - `document_stripper.rs` — PDF and DOCX metadata stripping
+- **`cli/`** — Binary crate using `clap`. Subcommands: `clean-text`, `clean-image`, `batch-clean`, `serve`, `ollama`
+- **`cli/src/proxy.rs`** — Axum HTTP server exposing `/health`, `/clean/text`, `/inspect/text`, `/clean/image`
+- **`wasm/`** — `wasm-bindgen` bindings exposing core functions to JavaScript
+- **`extension/`** — Chrome Extension (Manifest V3) with Transformers.js for local AI inference
+
+## Code Style
+- Use `Result<T, String>` for fallible functions in core (keeps it simple, no custom error types yet)
+- All new modules must be exported from `core/src/lib.rs`
+- CLI subcommands use `clap` derive macros
+- The proxy server uses `axum` with `serde` for JSON request/response types
+- Keep functions pure where possible — accept `&[u8]` and return `Vec<u8>` for binary operations
+
+## Testing
+- Run `cargo check --workspace` before committing
+- Run `cargo test --workspace` for unit tests
+- The extension is tested manually via `chrome://extensions/` (load unpacked)
+
+## GhostMark API Skill
+This repository ships an agent skill at `skills/ghostmark-clean/SKILL.md`.
+When a user asks to clean text or strip metadata, you can use the GhostMark HTTP API
+if the server is running (`curl http://127.0.0.1:8080/health`), or fall back to the CLI.

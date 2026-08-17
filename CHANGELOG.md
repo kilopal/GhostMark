@@ -9,6 +9,9 @@ All notable changes to this project will be documented in this file.
 - **DOCX Metadata Stripping**: New `document_stripper::strip_docx_metadata()` in `ghostmark-core` using the `zip` crate. Removes `docProps/` and `customXml/` entries from DOCX archives.
 - **CLI Batch Support**: The `batch-clean` subcommand now automatically detects and processes `.pdf` and `.docx` files alongside text and images.
 - **Docker Docs**: Added `docs/docker.md` with deployment guide, configuration, and API examples.
+- **Agent Skills**: Added `skills/ghostmark-clean/` with `SKILL.md` and reference docs for Cursor, Windsurf, Cline, and other AI IDE integrations. Agents auto-discover and learn the GhostMark API.
+- **Cursor Integration**: Added `.cursorrules` and `.cursor/rules` for native Cursor IDE project context.
+- **Agent Skills Docs**: Added `docs/agent-skills.md` with setup guide and supported IDEs.
 
 ## [0.8.0] - 2026-08-17
 ### Added
