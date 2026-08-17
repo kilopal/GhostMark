@@ -4,14 +4,18 @@
   "description": "",
   "main": "background.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "vite build && copy node_modules\\onnxruntime-web\\dist\\*.wasm dist\\assets\\ /Y && copy node_modules\\onnxruntime-web\\dist\\*.mjs dist\\assets\\ /Y",
+    "release": "npm run build && powershell Compress-Archive -Path dist, manifest.json, background.js, popup.html, pkg, public -DestinationPath ghostmark-release.zip -Force"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
-    "@mlc-ai/web-llm": "^0.2.84",
     "vite": "^8.2.1"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.4.1"
   }
 }

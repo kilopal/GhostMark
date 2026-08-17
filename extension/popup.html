@@ -3,285 +3,560 @@
 <head>
   <meta charset="UTF-8">
   <title>GhostMark</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    /* ========================================
+       DESIGN TOKENS (ChatGPT Dark Mode Style)
+       ======================================== */
     :root {
-      --bg: #212121; /* ChatGPT dark gray */
-      --bg-input: #2f2f2f;
-      --text: #ececec;
-      --text-muted: #b4b4b4;
-      --border: #424242;
-      --accent: #ececec;
-      --user-bubble: #2f2f2f;
+      --bg-base:       #212121;
+      --bg-raised:     #2f2f2f;
+      --bg-input:      #2f2f2f;
+      --bg-hover:      #383838;
+      --border:        transparent;
+      --border-focus:  #424242;
+      --text-primary:  #ececec;
+      --text-secondary:#b4b4b4;
+      --text-tertiary: #9b9b9b;
+      --accent:        #ffffff;
+      --accent-dim:    rgba(255,255,255,0.1);
+      --danger:        #ef4444;
+      --danger-dim:    rgba(239, 68, 68, 0.1);
+      --info:          #3b82f6;
+      --info-dim:      rgba(59, 130, 246, 0.1);
+      --radius-sm:     8px;
+      --radius-md:     16px;
+      --radius-lg:     24px;
+    }
+
+    /* ========================================
+       BASE
+       ======================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
 
     body {
-      font-family: 'Inter', -apple-system, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       width: 420px;
-      margin: 0;
-      padding: 0;
-      background-color: var(--bg);
-      color: var(--text);
+      height: 560px;
+      background-color: var(--bg-base);
+      color: var(--text-primary);
       display: flex;
       flex-direction: column;
-      height: 550px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow: hidden;
     }
 
-    /* Header */
+    /* ========================================
+       HEADER
+       ======================================== */
     .header {
       padding: 12px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: var(--bg);
+      background: var(--bg-base);
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
       z-index: 10;
     }
 
-    .title {
-      font-size: 16px;
-      font-weight: 600;
-      margin: 0;
+    .brand {
       display: flex;
       align-items: center;
       gap: 10px;
-      color: var(--text);
     }
 
-    .title-icon {
-      background: #fff;
-      color: #000;
+    .brand-icon {
       width: 24px;
       height: 24px;
-      border-radius: 6px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: var(--bg-base);
     }
 
+    .brand-icon svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .brand-name {
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      color: var(--text-primary);
+    }
+
+    /* Status badge */
     .status {
-      font-size: 12px;
-      color: var(--text-muted);
       display: flex;
       align-items: center;
       gap: 6px;
+      padding: 4px 8px;
+      font-size: 11px;
       font-weight: 500;
+      color: var(--text-secondary);
     }
 
     .status-dot {
-      width: 8px;
-      height: 8px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
-      background: #3b82f6; /* Ready blue */
+      background: var(--info);
+      flex-shrink: 0;
+      transition: background 0.3s ease;
     }
-    .state-success .status-dot { background: #10b981; }
-    .state-error .status-dot { background: #ef4444; }
 
-    /* Chat Area */
-    .chat-container {
+    .state-success .status-dot { background: var(--accent); }
+    .state-error .status-dot   { background: var(--danger); }
+    .state-ready .status-dot   { background: var(--info); }
+
+    /* ========================================
+       FEED AREA
+       ======================================== */
+    .feed {
       flex: 1;
-      padding: 20px;
       overflow-y: auto;
+      padding: 0 20px 20px 20px;
       display: flex;
       flex-direction: column;
-      gap: 28px;
+      gap: 24px;
       scroll-behavior: smooth;
     }
 
-    @keyframes slideUp {
-      from { opacity: 0; transform: translateY(12px); }
-      to { opacity: 1; transform: translateY(0); }
+    /* Shared entry animation */
+    @keyframes entryFade {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
-    .message {
+    /* --- User input quote --- */
+    .entry-user {
       display: flex;
-      flex-direction: column;
-      gap: 4px;
-      max-width: 90%;
-      animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      justify-content: flex-end;
+      animation: entryFade 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
-    .message.user {
-      align-self: flex-end;
-    }
-
-    .message.assistant {
-      align-self: flex-start;
-      max-width: 95%;
-    }
-
-    .message-content {
-      font-size: 15px;
-      line-height: 1.6;
+    .user-quote {
+      background: var(--bg-raised);
+      border-radius: var(--radius-lg);
+      padding: 12px 16px;
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text-primary);
+      max-width: 85%;
       word-wrap: break-word;
     }
 
-    .message.user .message-content {
-      background-color: var(--user-bubble);
-      padding: 12px 18px;
-      border-radius: 20px;
-      border-bottom-right-radius: 4px;
-      color: var(--text);
-    }
-
-    .message.assistant .message-content {
+    /* --- Result card (Assistant) --- */
+    .entry-result {
       display: flex;
-      gap: 16px;
-      align-items: flex-start;
+      justify-content: flex-start;
+      gap: 12px;
+      animation: entryFade 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      max-width: 95%;
     }
 
-    .assistant-icon {
+    .result-avatar {
       width: 28px;
       height: 28px;
       border-radius: 50%;
-      background: conic-gradient(from 180deg at 50% 50%, #2a8af6 0deg, #a853ba 180deg, #e92a67 360deg);
+      background: var(--accent);
+      color: var(--bg-base);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 14px;
       flex-shrink: 0;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
     }
 
-    .assistant-text {
+    .result-avatar svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .result-content {
       flex: 1;
-      padding-top: 2px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
 
-    /* Input Area */
-    .input-container {
-      padding: 10px 20px 24px 20px;
-      background: var(--bg);
+    .result-output {
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--text-primary);
+      word-wrap: break-word;
+      white-space: pre-wrap;
     }
 
-    .input-wrapper {
-      background-color: var(--bg-input);
-      border-radius: 24px;
-      padding: 10px 14px;
+    .result-meta {
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .result-meta .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .result-meta .success { background: var(--accent); }
+    .result-meta .error { background: var(--danger); }
+
+    /* --- Welcome card --- */
+    .welcome-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      margin-top: 40px;
+      gap: 16px;
+    }
+
+    .welcome-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--bg-raised);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .welcome-icon svg {
+      width: 24px;
+      height: 24px;
+      color: var(--text-primary);
+    }
+
+    .welcome-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+    }
+
+    .welcome-desc {
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text-secondary);
+      max-width: 80%;
+    }
+
+    /* ========================================
+       INPUT AREA
+       ======================================== */
+    .input-area {
+      padding: 0 20px 20px 20px;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    /* Toggle row */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      user-select: none;
+      justify-content: center;
+    }
+
+    .toggle-row:hover .toggle-label {
+      color: var(--text-primary);
+    }
+
+    .toggle-track {
+      position: relative;
+      width: 28px;
+      height: 16px;
+      background: #424242;
+      border-radius: 100px;
+      transition: background 0.2s ease;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 12px;
+      height: 12px;
+      background: var(--text-primary);
+      border-radius: 50%;
+      transition: all 0.2s ease;
+    }
+
+    .toggle-checkbox {
+      display: none;
+    }
+
+    .toggle-checkbox:checked + .toggle-track {
+      background: var(--accent);
+    }
+
+    .toggle-checkbox:checked + .toggle-track::after {
+      left: 14px;
+      background: var(--bg-base);
+    }
+
+    .toggle-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      transition: color 0.2s ease;
+    }
+
+    /* Input bar */
+    .input-bar {
       display: flex;
       align-items: flex-end;
       gap: 12px;
+      background: var(--bg-input);
+      border: 1px solid var(--bg-raised);
+      border-radius: var(--radius-lg);
+      padding: 10px 14px;
+      transition: border-color 0.2s ease;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
     }
 
-    textarea {
+    .input-bar:focus-within {
+      border-color: var(--border-focus);
+    }
+
+    .input-bar textarea {
       flex: 1;
       background: transparent;
       border: none;
-      color: var(--text);
+      color: var(--text-primary);
       font-family: inherit;
       font-size: 15px;
       line-height: 1.5;
       resize: none;
-      height: 22px; /* One line */
-      max-height: 150px;
+      height: 24px;
+      max-height: 160px;
       outline: none;
-      padding: 4px 4px;
+      padding: 2px 0;
       overflow-y: hidden;
     }
 
-    textarea::placeholder {
-      color: #8e8ea0;
+    .input-bar textarea::placeholder {
+      color: var(--text-tertiary);
     }
 
-    /* Submit Button */
-    .submit-btn {
-      background: var(--accent);
-      color: #000;
-      border: none;
-      border-radius: 50%;
+    /* Icon buttons in input bar */
+    .icon-btn {
       width: 32px;
       height: 32px;
+      border: none;
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      transition: opacity 0.2s;
       flex-shrink: 0;
-      margin-bottom: 2px;
+      transition: all 0.15s ease;
     }
 
-    .submit-btn:hover {
-      opacity: 0.8;
-    }
-
-    .submit-btn svg {
-      width: 14px;
-      height: 14px;
+    .icon-btn svg {
+      width: 16px;
+      height: 16px;
       fill: none;
       stroke: currentColor;
-      stroke-width: 2.5;
+      stroke-width: 2;
       stroke-linecap: round;
       stroke-linejoin: round;
     }
 
-    /* Scrollbar styling */
-    ::-webkit-scrollbar { width: 6px; }
+    .btn-attach {
+      background: transparent;
+      color: var(--text-primary);
+    }
+
+    .btn-attach:hover {
+      background: var(--bg-hover);
+    }
+
+    .btn-send {
+      background: var(--accent);
+      color: var(--bg-base);
+    }
+
+    .btn-send:hover {
+      opacity: 0.9;
+    }
+
+    .btn-send:active {
+      transform: scale(0.95);
+    }
+
+    /* ========================================
+       DRAG OVERLAY
+       ======================================== */
+    #dragOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(12, 12, 14, 0.92);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .drop-zone {
+      width: 200px;
+      height: 140px;
+      border: 2px dashed var(--border-focus);
+      border-radius: var(--radius-lg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: border-color 0.2s ease;
+    }
+
+    .drop-zone svg {
+      width: 32px;
+      height: 32px;
+      stroke: var(--text-tertiary);
+      fill: none;
+      stroke-width: 1.5;
+    }
+
+    .drop-zone-text {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    /* ========================================
+       SCROLLBAR
+       ======================================== */
+    ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #565656; border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: #71717a; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border-focus); }
+
+    /* ========================================
+       HIDDEN UTILITIES
+       ======================================== */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      white-space: nowrap;
+      border: 0;
+    }
   </style>
 </head>
 <body>
 
-  <div class="header">
-    <h1 class="title">
-      <div class="title-icon">👻</div>
-      GhostMark
-    </h1>
+  <!-- ==================== HEADER ==================== -->
+  <header class="header">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 1.74.56 3.35 1.5 4.66V22l2.5-2 2 2 2-2 2 2 2-2 2.5 2v-8.34A6.96 6.96 0 0019 9c0-3.87-3.13-7-7-7z" fill="currentColor" stroke="none"/>
+          <circle cx="9.5" cy="9" r="1.5" fill="var(--bg-base)"/>
+          <circle cx="14.5" cy="9" r="1.5" fill="var(--bg-base)"/>
+        </svg>
+      </div>
+      <span class="brand-name">GhostMark</span>
+    </div>
     <div class="status" id="statusBox">
       <div class="status-dot"></div>
-      <span id="status">WASM Ready</span>
+      <span id="status">Initializing</span>
     </div>
-  </div>
+  </header>
 
-  <div class="chat-container" id="chatArea">
-    <!-- Initial Greeting -->
-    <div class="message assistant">
-      <div class="message-content">
-        <div class="assistant-icon">👻</div>
-        <div class="assistant-text">
-          Hi! I'm GhostMark. Paste any text generated by an AI here, and I will mathematically scrub all hidden Unicode watermarks locally in your browser.
-        </div>
+  <!-- ==================== FEED ==================== -->
+  <div class="feed" id="chatArea">
+    <div class="welcome-card">
+      <div class="welcome-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+      </div>
+      <div class="welcome-body">
+        <div class="welcome-title">Watermark Scrubber</div>
+        <div class="welcome-desc">Paste AI-generated text to strip hidden Unicode watermarks, or drop an image to remove C2PA tracking metadata. Everything runs locally.</div>
       </div>
     </div>
   </div>
 
-  <!-- Drag & Drop Overlay -->
-  <div id="dragOverlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(33, 33, 33, 0.9); z-index: 50; flex-direction: column; align-items: center; justify-content: center; color: #10b981; font-weight: 600; font-size: 18px;">
-    <svg style="width: 48px; height: 48px; margin-bottom: 12px; stroke: currentColor; fill: none; stroke-width: 2;" viewBox="0 0 24 24">
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-      <polyline points="17 8 12 3 7 8"></polyline>
-      <line x1="12" y1="3" x2="12" y2="15"></line>
-    </svg>
-    Drop Image to Scrub
+  <!-- ==================== DRAG OVERLAY ==================== -->
+  <div id="dragOverlay">
+    <div class="drop-zone">
+      <svg viewBox="0 0 24 24">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      <span class="drop-zone-text">Drop image here</span>
+    </div>
   </div>
 
-  <div class="input-container">
-    <label class="toggle-container" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 13px; color: var(--text-muted); cursor: pointer; padding-left: 14px;">
-      <input type="checkbox" id="aggressiveScrub" style="accent-color: #10b981; width: 16px; height: 16px; cursor: pointer;">
-      Deep Statistical Scrub (Defeat SynthID)
-    </label>
-    <div class="input-wrapper">
-      <!-- Hidden file input -->
-      <input type="file" id="fileInput" accept="image/png, image/jpeg, image/webp" style="display: none;">
-      <!-- Paperclip icon -->
-      <button class="upload-btn" id="uploadBtn" title="Upload Image" style="background: transparent; border: none; color: #8e8ea0; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center;">
-        <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;">
-          <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+  <!-- ==================== INPUT AREA ==================== -->
+  <div class="input-area">
+    <div class="toggles-container" style="display:flex; justify-content:center; gap:16px; margin-bottom:12px; flex-wrap:wrap;">
+      <label class="toggle-row" style="margin-bottom:0;">
+        <input type="checkbox" id="aggressiveScrub" class="toggle-checkbox">
+        <div class="toggle-track"></div>
+        <span class="toggle-label">Deep Scrub</span>
+      </label>
+      <label class="toggle-row" style="margin-bottom:0;">
+        <input type="checkbox" id="grammarScrub" class="toggle-checkbox">
+        <div class="toggle-track"></div>
+        <span class="toggle-label">Grammar Only</span>
+      </label>
+      <label class="toggle-row" style="margin-bottom:0;" title="Requires Ollama server running locally (e.g., ollama run llama3)">
+        <input type="checkbox" id="ollamaMode" class="toggle-checkbox">
+        <div class="toggle-track"></div>
+        <span class="toggle-label">Ollama</span>
+      </label>
+    </div>
+    <div id="ollamaSettings" style="display:none; justify-content:center; margin-bottom:12px;">
+      <input type="text" id="ollamaModel" placeholder="Model (e.g. llama3)" value="llama3" style="background:var(--bg-raised); border:1px solid var(--border-focus); color:var(--text-primary); padding:4px 8px; border-radius:4px; font-size:12px; width:140px; outline:none;">
+    </div>
+
+    <div class="input-bar">
+      <input type="file" id="fileInput" accept="image/png, image/jpeg, image/webp" class="sr-only">
+      <button class="icon-btn btn-attach" id="uploadBtn" title="Upload Image">
+        <svg viewBox="0 0 24 24">
+          <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
         </svg>
       </button>
-      
-      <textarea id="inputText" placeholder="Paste text or drop image..."></textarea>
-      <button class="submit-btn" id="scrubBtn" title="Scrub & Copy">
+      <textarea id="inputText" placeholder="Paste text or drop image..." rows="1"></textarea>
+      <button class="icon-btn btn-send" id="scrubBtn" title="Scrub & Copy">
         <svg viewBox="0 0 24 24">
-          <line x1="12" y1="19" x2="12" y2="5"></line>
-          <polyline points="5 12 12 5 19 12"></polyline>
+          <line x1="12" y1="19" x2="12" y2="5"/>
+          <polyline points="5 12 12 5 19 12"/>
         </svg>
       </button>
     </div>
   </div>
 
-  <script type="module" src="popup.js"></script>
-  
+  <script type="module" src="dist/popup.bundle.js"></script>
+
 </body>
 </html>

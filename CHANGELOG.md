@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.0] - 2026-08-17
+### Added
+- **Ollama Mode**: Introduced an optional toggle to offload heavy AI rewriting to a local Ollama server (`http://localhost:11434`), allowing users to run massive 10B+ parameter models natively on their GPU for instant processing speeds.
+
+### Fixed
+- **UI**: Fixed the GhostMark SVG logo in the extension popup (restored the missing eyes in the avatar icons).
+
+## [0.6.0] - 2026-08-17
+### Changed
+- **Extension UI**: Redesigned the popup with a card-based feed layout, structured result cards, a refined color system, and intentional micro-animations following Calm UI principles.
+- **LLM Engine**: Replaced `@mlc-ai/web-llm` (WebGPU-only) with `@huggingface/transformers` (ONNX WASM) and upgraded from flan-t5 to **Llama-3.2-1B-Instruct** (1.2 billion parameters). The Deep Statistical Scrub now runs on **CPU** — no WebGPU required, no deadlocks, works on every device, albeit slower for this huge model size.
+- **Bundle Size**: Reduced popup.bundle.js from 6MB to 860KB (7x smaller).
+- **WASM Init**: Fixed deprecated parameter warning by passing `{ module_or_path }` object to the wasm-bindgen init function.
+
+## [0.5.0] - 2026-08-17
+### Changed
+- **Extension UI**: Completely overhauled the browser extension with a state-of-the-art, premium dark mode design. Improved typography, subtle micro-animations, and overall sleek aesthetics.
+
 ## [0.4.0] - 2026-08-15
 ### Added
 - **Browser Extension**: A complete Chrome/Edge extension with a premium ChatGPT-style UI.
