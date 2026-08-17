@@ -155,6 +155,30 @@ async fn main() {
                                 cleaned_files += 1;
                             }
                         }
+                    } else if ext == "svg" {
+                        if let Ok(bytes) = fs::read(path) {
+                            if let Ok(clean) = document_stripper::strip_svg_metadata(&bytes) {
+                                fs::write(path, clean).unwrap_or_else(|e| eprintln!("Failed to write {}: {}", path.display(), e));
+                                println!("✅ Stripped SVG metadata: {}", path.display());
+                                cleaned_files += 1;
+                            }
+                        }
+                    } else if ext == "epub" {
+                        if let Ok(bytes) = fs::read(path) {
+                            if let Ok(clean) = document_stripper::strip_epub_metadata(&bytes) {
+                                fs::write(path, clean).unwrap_or_else(|e| eprintln!("Failed to write {}: {}", path.display(), e));
+                                println!("✅ Stripped EPUB metadata: {}", path.display());
+                                cleaned_files += 1;
+                            }
+                        }
+                    } else if ext == "odt" {
+                        if let Ok(bytes) = fs::read(path) {
+                            if let Ok(clean) = document_stripper::strip_odt_metadata(&bytes) {
+                                fs::write(path, clean).unwrap_or_else(|e| eprintln!("Failed to write {}: {}", path.display(), e));
+                                println!("✅ Stripped ODT metadata: {}", path.display());
+                                cleaned_files += 1;
+                            }
+                        }
                     }
                 }
             }

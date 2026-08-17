@@ -5,6 +5,13 @@
 </div>
 
 <p align="center">
+  <a href="https://github.com/kilopal/GhostMark/actions/workflows/ci.yml"><img src="https://github.com/kilopal/GhostMark/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/kilopal/GhostMark/pkgs/container/ghostmark"><img src="https://img.shields.io/badge/ghcr.io-ghostmark-blue?logo=docker" alt="Docker"></a>
+  <a href="https://github.com/kilopal/GhostMark/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License"></a>
+  <img src="https://img.shields.io/badge/Rust-100%25-orange?logo=rust" alt="Rust">
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/Local_AI-100%25_Private-success?style=for-the-badge" alt="Local AI">
   <img src="https://img.shields.io/badge/Manifest-V3-orange?style=for-the-badge" alt="Manifest V3">
   <img src="https://img.shields.io/badge/Runs_on-CPU-blue?style=for-the-badge" alt="CPU">
@@ -26,6 +33,24 @@ Unlike CLI tools or Docker containers that are meant for servers, GhostMark runs
 - ✅ **New:** Offline Grammar & Proofread mode.
 - ✅ **New:** Ollama Mode! Run massive 10B+ parameter models on your local GPU for instant AI inference.
 - ✅ Card-based dark mode UI with structured result cards.
+
+---
+
+## 📊 Format Coverage
+
+| Format | Layer | What Gets Stripped |
+|--------|-------|--------------------|
+| **Text** (`.txt`, `.md`, `.json`) | Unicode | Zero-width chars, tag characters, invisible formatting |
+| **JPEG** (`.jpg`, `.jpeg`) | Metadata | EXIF, C2PA, XMP, ICC, IPTC |
+| **PNG** | Metadata | C2PA manifests, tEXt/iTXt chunks |
+| **WebP** | Metadata | EXIF, XMP, C2PA |
+| **BMP** | Binary | Trailing bytes after declared file size |
+| **GIF** | Binary | Trailing bytes after `0x3B` trailer |
+| **PDF** | Metadata | `/Info` dictionary, XMP `/Metadata` streams |
+| **DOCX** | Metadata | `docProps/`, `customXml/` |
+| **SVG** | XML | `<metadata>`, comments, `data-c2pa-*` attributes |
+| **EPUB** | Metadata | `META-INF/signatures`, OPF metadata blocks |
+| **ODT** | Metadata | `meta.xml`, document signatures |
 
 ---
 
@@ -79,7 +104,7 @@ cargo run -p ghostmark -- clean-text "Your watermarked text here"
 ```
 
 **Batch Cleaning:**
-You can scrub an entire directory of files (`.txt`, `.json`, `.jpg`, `.png`, `.bmp`, `.gif`, `.pdf`, `.docx`, etc) in-place:
+You can scrub an entire directory of files (`.txt`, `.json`, `.jpg`, `.png`, `.bmp`, `.gif`, `.pdf`, `.docx`, `.svg`, `.epub`, `.odt`) in-place:
 ```bash
 cargo run -p ghostmark -- batch-clean --dir ./my-dataset/
 ```
