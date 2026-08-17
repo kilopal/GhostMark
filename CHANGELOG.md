@@ -14,7 +14,14 @@ All notable changes to this project will be documented in this file.
 - **Agent Skills Docs**: Added `docs/agent-skills.md` with setup guide and supported IDEs.
 - **BMP Support**: New `strip_bmp_trailing_bytes()` in `image_stripper` — truncates BMP files to their declared file size, stripping any steganographic or tracking payloads appended after the header-declared boundary.
 - **GIF Support**: New `strip_gif_trailing_bytes()` in `image_stripper` — parses the GIF block structure and truncates at the `0x3B` trailer byte, removing any data appended after the valid GIF stream.
-- **CLI Batch Support**: The `batch-clean` subcommand now processes `.bmp` and `.gif` files alongside JPEG, PNG, and WebP.
+- **CLI Batch Support**: The `batch-clean` subcommand now processes `.bmp`, `.gif`, `.svg`, `.epub`, and `.odt` files alongside JPEG, PNG, WebP, PDF, and DOCX.
+- **SVG Metadata Stripping**: New `strip_svg_metadata()` — removes `<metadata>` blocks, HTML comments, and `data-c2pa-*` attributes from SVG files.
+- **EPUB Metadata Stripping**: New `strip_epub_metadata()` — removes `META-INF/signatures`, `META-INF/encryption`, and strips `<metadata>` from OPF package files.
+- **ODT Metadata Stripping**: New `strip_odt_metadata()` — removes `meta.xml` and digital signature files from OpenDocument Text archives.
+- **OpenAPI Spec**: The HTTP proxy now serves a machine-readable OpenAPI 3.0.3 specification at `GET /openapi.json`.
+- **GitHub Actions CI/CD**: Added `.github/workflows/ci.yml` with cross-platform testing (Linux/macOS/Windows), clippy lints, formatting checks, Docker build validation, release binary uploads, and GHCR Docker image publishing on tags.
+- **CONTRIBUTING.md**: Added contributor guide with project structure, code guidelines, and development workflow.
+- **Issue Templates**: Added GitHub issue templates for bug reports and feature requests.
 
 ## [0.8.0] - 2026-08-17
 ### Added

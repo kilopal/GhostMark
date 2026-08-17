@@ -88,6 +88,48 @@ async fn health() -> impl IntoResponse {
     })
 }
 
+async fn openapi() -> impl IntoResponse {
+    let spec = serde_json::json!({
+        "openapi": "3.0.3",
+        "info": {
+            "title": "GhostMark API",
+            "description": "Memory-safe API for stripping AI provenance watermarks from text and images.",
+            "version": env!("CARGO_PKG_VERSION"),
+            "license": { "name": "MIT" }
+        },
+        "paths": {
+            "/health": {
+                "get": {
+                    "summary": "Service health check",
+                    "responses": { "200": { "description": "Service is healthy" } }
+                }
+            },
+            "/clean/text": {
+                "post": {
+                    "summary": "Strip Unicode watermarks from text",
+                    "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "text": { "type": "string" } }, "required": ["text"] } } } },
+                    "responses": { "200": { "description": "Cleaned text response" } }
+                }
+            },
+            "/inspect/text": {
+                "post": {
+                    "summary": "Detect watermark characters in text",
+                    "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "text": { "type": "string" } }, "required": ["text"] } } } },
+                    "responses": { "200": { "description": "Inspection result" } }
+                }
+            },
+            "/clean/image": {
+                "post": {
+                    "summary": "Strip C2PA/EXIF metadata from images",
+                    "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "file": { "type": "string", "format": "byte" }, "name": { "type": "string" } }, "required": ["file", "name"] } } } },
+                    "responses": { "200": { "description": "Cleaned image response" } }
+                }
+            }
+        }
+    });
+    Json(spec)
+}
+
 async fn clean_text(Json(payload): Json<CleanTextRequest>) -> impl IntoResponse {
     let start = Instant::now();
     let original_len = payload.text.len();
@@ -184,6 +226,7 @@ async fn clean_image(
 pub async fn start_server(host: &str, port: u16) {
     let app = Router::new()
         .route("/health", get(health))
+        .route("/openapi.json", get(openapi))
         .route("/clean/text", post(clean_text))
         .route("/inspect/text", post(inspect_text))
         .route("/clean/image", post(clean_image));
@@ -205,10 +248,11 @@ pub async fn start_server(host: &str, port: u16) {
     println!("  🛡️  Engine: Rust/Axum (memory-safe, zero-copy)");
     println!();
     println!("  Routes:");
-    println!("    GET  /health        → Service health check");
-    println!("    POST /clean/text    → Strip Unicode watermarks from text");
-    println!("    POST /inspect/text  → Detect watermark characters in text");
-    println!("    POST /clean/image   → Strip C2PA/Exif metadata from images");
+    println!("    GET  /health         → Service health check");
+    println!("    GET  /openapi.json   → OpenAPI 3.0.3 specification");
+    println!("    POST /clean/text     → Strip Unicode watermarks from text");
+    println!("    POST /inspect/text   → Detect watermark characters in text");
+    println!("    POST /clean/image    → Strip C2PA/Exif metadata from images");
     println!();
 
     let listener = tokio::net::TcpListener::bind(addr)
