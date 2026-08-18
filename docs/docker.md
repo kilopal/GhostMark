@@ -23,7 +23,7 @@ The Docker image uses a **multi-stage build**:
 
 | Stage | Base Image | Purpose |
 |-------|-----------|---------|
-| `builder` | `rust:1.87-slim` | Compiles the Rust workspace into a single static binary |
+| `builder` | `rust:1.88-slim` | Compiles the Rust workspace into a single static binary |
 | `runtime` | `debian:bookworm-slim` | Runs only the ~5 MB binary — no Rust toolchain shipped |
 
 The final image is typically **under 80 MB** — far smaller than Python-based alternatives.
