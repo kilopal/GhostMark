@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [0.12.1] - 2026-08-18
 ### Fixed
+- **SynthID Toggle UX**: The SynthID Detect toggle will no longer enable if the Gemini API key is missing (instead, just opening settings), preventing annoying "SynthID detection skipped" spam messages in the chat interface.
+- **Website Image Processing Bug**: Fixed a severe bug in the website's WASM worker (`wasm-worker.ts`) where it forgot to import and use the image processing WASM function, causing all image uploads (e.g., `.jpg`, `.png`) to fail with an "Unsupported file type" error despite UI claims.
 - **Website File Input**: Added an explicit `accept` attribute to the website's file input (`App.tsx`) to properly display document formats (`.pdf`, `.docx`, `.epub`, `.odt`, `.svg`) alongside images in the OS file picker.
 - **Extension File Input**: Updated the extension popup file input and drag-and-drop zone to officially accept `.pdf`, `.docx`, `.epub`, `.odt`, and `.svg` files alongside images, matching the WASM engine's capabilities.
 - **CI Build Warnings**: Removed the abandoned Phase 5.2 Statistical Humanizer logic from `text_scrubber.rs` entirely, resolving build warnings and fixing a broken test (`test_humanizer_changes_text` -> `test_homoglyphs_injected`).
