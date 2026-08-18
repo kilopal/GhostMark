@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://github.com/kilopal/GhostMark/actions/workflows/ci.yml"><img src="https://github.com/kilopal/GhostMark/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/kilopal/GhostMark/pkgs/container/ghostmark"><img src="https://img.shields.io/badge/ghcr.io-ghostmark-blue?logo=docker" alt="Docker"></a>
-  <a href="https://github.com/kilopal/GhostMark/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License"></a>
+  <a href="https://github.com/kilopal/GhostMark/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Apache2.0-green.svg" alt="License"></a>
   <img src="https://img.shields.io/badge/Rust-100%25-orange?logo=rust" alt="Rust">
 </p>
 
