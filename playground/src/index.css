@@ -115,7 +115,7 @@ button { font-family: inherit; }
 .layout {
   display: flex;
   flex-direction: row;
-  height: 100vh;
+  height: 100dvh;
   width: 100vw;
   position: relative;
   overflow: hidden;
@@ -240,8 +240,7 @@ button { font-family: inherit; }
 
 /* Top Nav */
 .top-nav {
-  position: absolute;
-  top: 0; left: 0; right: 0;
+  flex-shrink: 0;
   height: 60px;
   display: flex;
   justify-content: space-between;
@@ -401,7 +400,6 @@ button { font-family: inherit; }
 .chat-feed {
   flex: 1;
   overflow-y: auto;
-  padding-top: 60px; /* Space for top nav */
 }
 
 .empty-state {
