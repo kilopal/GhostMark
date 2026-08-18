@@ -56,7 +56,7 @@ pub fn strip_docx_metadata(bytes: &[u8]) -> Result<Vec<u8>, String> {
         }
 
         zip_writer
-            .start_file(name, options.clone())
+            .start_file(name, options)
             .map_err(|e| format!("Error writing ZIP file: {}", e))?;
         let mut buffer = Vec::new();
         file.read_to_end(&mut buffer)
@@ -119,7 +119,6 @@ pub fn strip_svg_metadata(bytes: &[u8]) -> Result<Vec<u8>, String> {
                         // Also remove leading whitespace before the attribute
                         let attr_start = result[..start]
                             .rfind(char::is_whitespace)
-                            .map(|p| p)
                             .unwrap_or(start);
                         result = format!("{}{}", &result[..attr_start], &result[end_abs..]);
                         continue;
@@ -175,7 +174,7 @@ pub fn strip_epub_metadata(bytes: &[u8]) -> Result<Vec<u8>, String> {
         }
 
         zip_writer
-            .start_file(name, options.clone())
+            .start_file(name, options)
             .map_err(|e| format!("Error writing EPUB entry: {}", e))?;
         zip_writer
             .write_all(&buffer)
@@ -221,7 +220,7 @@ pub fn strip_odt_metadata(bytes: &[u8]) -> Result<Vec<u8>, String> {
         }
 
         zip_writer
-            .start_file(name, options.clone())
+            .start_file(name, options)
             .map_err(|e| format!("Error writing ODT entry: {}", e))?;
         let mut buffer = Vec::new();
         file.read_to_end(&mut buffer)

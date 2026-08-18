@@ -36,6 +36,7 @@ pub struct CleanImageRequest {
     /// Base64-encoded image bytes
     pub file: String,
     /// Original filename (used to detect format)
+    #[allow(dead_code)]
     pub name: String,
 }
 

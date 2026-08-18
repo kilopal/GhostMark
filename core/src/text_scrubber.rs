@@ -392,6 +392,7 @@ fn pass_burstiness(input: &str, rng: &mut Rng) -> String {
             let mut split_at = words.len() / 2;
 
             // Try to find a comma near the middle to split at
+            #[allow(clippy::needless_range_loop)]
             for i in (words.len() / 3)..((2 * words.len()) / 3) {
                 if words[i].ends_with(',') {
                     split_at = i + 1;

@@ -98,6 +98,7 @@ export default function App() {
   };
 
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingTime, setProcessingTime] = useState(0);
   const [wasmEngine, setWasmEngine] = useState<any>(null);
   
   // Settings State
@@ -131,6 +132,20 @@ export default function App() {
   useEffect(() => {
     feedEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isProcessing]);
+
+  // Processing Timer
+  useEffect(() => {
+    let interval: any;
+    if (isProcessing) {
+      setProcessingTime(0);
+      interval = setInterval(() => {
+        setProcessingTime(prev => prev + 0.1);
+      }, 100);
+    } else {
+      setProcessingTime(0);
+    }
+    return () => clearInterval(interval);
+  }, [isProcessing]);
 
   // Load WASM on mount
   useEffect(() => {
@@ -219,9 +234,9 @@ export default function App() {
            { role: 'system', content: 'You are an expert editor. Rewrite the user\'s text to sound conversational and human. Preserve the exact same meaning. Output ONLY the rewritten text, nothing else.' },
            { role: 'user', content: currentText }
          ];
-         const result = await pipe(chat, { max_new_tokens: 512, temperature: 0.6 });
-         const generatedText = result[0].generated_text;
-         currentText = generatedText[generatedText.length - 1].content;
+         const prompt = pipe.tokenizer.apply_chat_template(chat, { tokenize: false, add_generation_prompt: true });
+         const result = await pipe(prompt, { max_new_tokens: 512, temperature: 0.6, return_full_text: false });
+         currentText = result[0].generated_text.trim();
       }
 
       // 3. Post-processing
@@ -551,7 +566,7 @@ export default function App() {
                  <div style={{ paddingTop: '6px', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
                    {llmMode === 'webgpu' && hfProgress > 0 && hfProgress < 100 
                       ? `Downloading Model... ${hfProgress}%` 
-                      : <span className="animate-pulse">Processing...</span>
+                      : <span className="animate-pulse">Processing... ({processingTime.toFixed(1)}s)</span>
                    }
                  </div>
                </div>
