@@ -283,6 +283,8 @@ fn pass_contractions(input: &str) -> String {
     let mut text = input.to_string();
     
     let contractions: &[(&str, &str)] = &[
+        ("It is not", "It's not"),
+        ("it is not", "it's not"),
         ("do not", "don't"),
         ("does not", "doesn't"),
         ("did not", "didn't"),
@@ -328,6 +330,12 @@ fn pass_contractions(input: &str) -> String {
         ("They are", "They're"),
         ("We are", "We're"),
         ("You are", "You're"),
+        ("We will", "We'll"),
+        ("They will", "They'll"),
+        ("It will", "It'll"),
+        ("Who is", "Who's"),
+        ("What is", "What's"),
+        ("Let us", "Let's"),
     ];
     
     for (from, to) in contractions {
@@ -570,7 +578,7 @@ mod tests {
     fn test_contractions() {
         let formal = "It is not possible. They are going. We will succeed.";
         let result = pass_contractions(formal);
-        assert!(result.contains("isn't"));
+        assert!(result.contains("It's not"));
         assert!(result.contains("They're"));
         assert!(result.contains("We'll"));
     }
