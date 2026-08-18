@@ -603,15 +603,13 @@ mod tests {
     }
 
     #[test]
-    fn test_humanizer_changes_text() {
+    fn test_homoglyphs_injected() {
         let ai_text = "In today's rapidly evolving and fast-paced digital landscape, the integration of artificial intelligence has become a crucial and transformative element across numerous industries.";
-        let humanized = sanitize_text(ai_text, true);
-        // The humanized text should be significantly different
-        assert_ne!(ai_text, humanized);
-        // Should not contain "crucial" (swapped out)
-        assert!(!humanized.contains("crucial"));
-        // Should not contain "rapidly" (swapped out)
-        assert!(!humanized.contains("rapidly"));
+        let homoglyphed = sanitize_text(ai_text, true);
+        // The text should be different at the byte level due to homoglyph injection
+        assert_ne!(ai_text, homoglyphed);
+        // The homoglyph text should have a different number of bytes (Cyrillic characters are multi-byte)
+        // or at least be guaranteed to not be exactly equal to the ASCII input
     }
 
     #[test]

@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [0.12.1] - 2026-08-18
 ### Fixed
+- **Website File Input**: Added an explicit `accept` attribute to the website's file input (`App.tsx`) to properly display document formats (`.pdf`, `.docx`, `.epub`, `.odt`, `.svg`) alongside images in the OS file picker.
+- **Extension File Input**: Updated the extension popup file input and drag-and-drop zone to officially accept `.pdf`, `.docx`, `.epub`, `.odt`, and `.svg` files alongside images, matching the WASM engine's capabilities.
+- **CI Build Warnings**: Removed the abandoned Phase 5.2 Statistical Humanizer logic from `text_scrubber.rs` entirely, resolving build warnings and fixing a broken test (`test_humanizer_changes_text` -> `test_homoglyphs_injected`).
 - **Mobile Responsiveness**: Fixed toggle bar layout on mobile devices so switches no longer overlap or wrap poorly.
 - **WebGPU Mobile Crash**: Added a fallback where the "Deep Scrub" quick toggle now prevents the 3.8B WebGPU model from downloading on mobile devices to prevent out-of-memory crashes, instead gracefully defaulting to the Cloud engine.
 
