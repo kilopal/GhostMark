@@ -904,7 +904,7 @@ export default function App() {
             </label>
           </div>
           <div className="input-wrapper">
-            <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={(e) => { if (e.target.files && e.target.files[0]) handleFileUpload(e.target.files[0]); }} />
+            <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="*/*,application/pdf,text/plain,.docx,.pdf,.txt" onChange={(e) => { if (e.target.files && e.target.files[0]) handleFileUpload(e.target.files[0]); }} />
             
             <button className="attach-btn" onClick={() => fileInputRef.current?.click()} title="Attach File">
               <Paperclip size={20} />

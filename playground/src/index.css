@@ -95,89 +95,6 @@ button { font-family: inherit; }
   z-index: 45;
 }
 
-@media (max-width: 768px) {
-  .mobile-menu-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 0.5rem;
-  }
-  .sidebar {
-    position: fixed;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-    z-index: 60;
-  }
-  .sidebar.open {
-    transform: translateX(0);
-  }
-  .sidebar-overlay {
-    display: block;
-    z-index: 55;
-  }
-  .top-nav {
-    padding: 0 1rem;
-  }
-  .brand-title {
-    display: block;
-    font-size: 1rem;
-  }
-  .oss-btn {
-    display: none;
-  }
-  .dropdown-btn > span:first-child {
-    display: none;
-  }
-  .input-wrapper {
-    margin: 0;
-    width: 100%;
-  }
-  
-  /* Make settings modal full screen on mobile */
-  .settings-modal {
-    position: fixed;
-    top: 60px; /* height of top-nav */
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100%;
-    max-height: calc(100dvh - 60px);
-    margin-top: 0;
-    border-radius: 0;
-    border: none;
-    border-top: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .settings-body {
-    max-height: none;
-    flex: 1;
-    padding-bottom: 2rem;
-  }
-
-  /* Optimize chat messages for mobile */
-  .message-row {
-    padding: 1rem 0.75rem;
-  }
-  
-  .message-content {
-    gap: 0.75rem;
-  }
-  
-  .avatar {
-    width: 24px;
-    height: 24px;
-    font-size: 0.65rem;
-  }
-  
-  .prose {
-    font-size: 0.95rem;
-  }
-}
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
@@ -725,5 +642,87 @@ button { font-family: inherit; }
   }
   .input-container {
     padding: 0.75rem 0.5rem;
+  }
+
+  .mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 0.5rem;
+  }
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    z-index: 60;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  .sidebar-overlay {
+    display: block;
+    z-index: 55;
+  }
+  .top-nav {
+    padding: 0 1rem;
+  }
+  .brand-title {
+    display: block;
+    font-size: 1rem;
+  }
+  .oss-btn {
+    display: none !important;
+  }
+  .dropdown-btn > span:first-child {
+    display: none !important;
+  }
+  .input-wrapper {
+    margin: 0;
+    width: 100%;
+  }
+  
+  /* Make settings modal full screen on mobile */
+  .settings-modal {
+    position: fixed;
+    top: 60px; /* height of top-nav */
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-height: calc(100dvh - 60px);
+    margin-top: 0;
+    border-radius: 0;
+    border: none;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .settings-body {
+    max-height: none;
+    flex: 1;
+    padding-bottom: 2rem;
+  }
+
+  /* Optimize chat messages for mobile */
+  .message-row {
+    padding: 1rem 0.75rem;
+  }
+  
+  .message-content {
+    gap: 0.75rem;
+  }
+  
+  .avatar {
+    width: 24px;
+    height: 24px;
+    font-size: 0.65rem;
+  }
+  
+  .prose {
+    font-size: 0.95rem;
   }
 }
