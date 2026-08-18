@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowUp, Paperclip, Download, FileCode, Globe, Terminal, AlertCircle, X, ChevronDown, CheckCircle2, Code2, Trash2, Menu } from 'lucide-react';
+import { ArrowUp, Paperclip, Download, FileCode, Globe, Terminal, AlertCircle, X, ChevronDown, CheckCircle2, Code2, Trash2, Menu, Bot } from 'lucide-react';
 import initWasm, { sanitize_text_wasm, strip_image_bytes_wasm, strip_pdf_metadata_wasm, strip_docx_metadata_wasm, strip_epub_metadata_wasm, strip_odt_metadata_wasm, strip_svg_metadata_wasm } from './pkg/ghostmark_wasm.js';
 import wasmUrl from './pkg/ghostmark_wasm_bg.wasm?url';
 import { pipeline, env } from '@huggingface/transformers';
@@ -231,13 +231,32 @@ export default function App() {
          currentText = data.response;
       } else if (llmMode === 'webgpu') {
          const pipe = await getParaphraser();
-         const chat = [
-           { role: 'system', content: 'You are an expert editor. Rewrite the user\'s text to sound conversational and human. Preserve the exact same meaning. Output ONLY the rewritten text, nothing else.' },
-           { role: 'user', content: currentText }
-         ];
-         const prompt = pipe.tokenizer.apply_chat_template(chat, { tokenize: false, add_generation_prompt: true });
-         const result = await pipe(prompt, { max_new_tokens: 512, temperature: 0.6, return_full_text: false });
-         currentText = result[0].generated_text.trim();
+         
+         // Split into ~400 char chunks. The 1B model is too small to handle
+         // full essays in one shot — it hallucinates. Chunking is what made
+         // the extension achieve 0% AI detection consistently.
+         const chunks: string[] = [];
+         for (let i = 0; i < currentText.length; i += 400) {
+           chunks.push(currentText.slice(i, i + 400));
+         }
+
+         const rewrittenParts: string[] = [];
+         for (const chunk of chunks) {
+           const chat = [
+             { role: 'system', content: 'You are an expert editor. Rewrite the user\'s text to sound conversational and human. You MUST preserve the exact same meaning, names, genders, and pronouns (he/she/they) as the original. Output only the rewritten text.' },
+             { role: 'user', content: chunk }
+           ];
+           const result = await pipe(chat, {
+             max_new_tokens: 2048,
+             temperature: 0.6,
+             top_p: 0.9,
+             repetition_penalty: 1.05,
+             do_sample: true
+           });
+           const out = result[0].generated_text;
+           rewrittenParts.push(out[out.length - 1].content.trim());
+         }
+         currentText = rewrittenParts.join(' ');
       }
 
       // 3. Post-processing
@@ -295,6 +314,29 @@ export default function App() {
       await processFile(file, strip_odt_metadata_wasm);
     } else if (ext === 'svg') {
       await processFile(file, strip_svg_metadata_wasm);
+    } else if (['txt', 'md', 'json'].includes(ext || '')) {
+      // For text files, read as string, run WASM, then download as Blob
+      updateMessages((prev: Message[]) => [...prev, { role: 'user', content: `Attached File: ${file.name}` }]);
+      try {
+         setIsProcessing(true);
+         const text = await file.text();
+         const cleaned = sanitize_text_wasm(text, false);
+         const encoder = new TextEncoder();
+         const cleanedBytes = encoder.encode(cleaned);
+         
+         updateMessages((prev: Message[]) => [...prev, { 
+            role: 'assistant', 
+            content: `Scrubbed successfully! Applied homoglyph injection and removed metadata formatting.`,
+            isDownloadable: true,
+            fileName: file.name,
+            fileBytes: cleanedBytes,
+            fileType: file.type || 'text/plain'
+         }]);
+      } catch (err: any) {
+         updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: `Error processing text file: ${err.message}` }]);
+      } finally {
+         setIsProcessing(false);
+      }
     } else {
       updateMessages((prev: Message[]) => [...prev, { role: 'user', content: `Attached File: ${file.name}` }]);
       updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: 'Error: Unsupported file type. GhostMark Web supports Text, Images, PDF, DOCX, EPUB, ODT, and SVG.' }]);
@@ -530,6 +572,10 @@ export default function App() {
                  <a href="https://github.com/kilopal/GhostMark/tree/main/wasm" target="_blank" rel="noreferrer" className="suggest-btn">
                    <Code2 size={18} />
                    Developer WASM API
+                 </a>
+                 <a href="https://github.com/kilopal/GhostMark/tree/main/skills/ghostmark-clean" target="_blank" rel="noreferrer" className="suggest-btn">
+                   <Bot size={18} />
+                   Add AI Agent Skill
                  </a>
               </div>
             </div>

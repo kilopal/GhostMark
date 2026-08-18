@@ -1,4 +1,4 @@
-import init, { sanitize_text_wasm, strip_image_bytes_wasm } from './pkg/ghostmark_wasm.js';
+import init, { sanitize_text_wasm, strip_image_bytes_wasm, strip_pdf_metadata_wasm, strip_docx_metadata_wasm, strip_epub_metadata_wasm, strip_odt_metadata_wasm, strip_svg_metadata_wasm } from './pkg/ghostmark_wasm.js';
 import { pipeline, env } from '@huggingface/transformers';
 
 // ==========================================
@@ -108,14 +108,14 @@ async function copyToClipboard(text) {
 }
 
 // ==========================================
-// IMAGE PROCESSING
+// FILE PROCESSING
 // ==========================================
 
-async function processImageFile(file) {
+async function processFile(file, wasmFunc, typeLabel) {
   if (!wasmLoaded) return;
   
   // Update UI to show upload
-  appendUserMessage(`📎 Uploaded Image: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
+  appendUserMessage(`📎 Uploaded ${typeLabel}: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
   
   try {
     const t0 = performance.now();
@@ -124,14 +124,14 @@ async function processImageFile(file) {
     const arrayBuffer = await file.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
     
-    // Call Rust WASM to strip C2PA chunks in-memory
-    const cleanedBytes = strip_image_bytes_wasm(uint8Array);
+    // Call Rust WASM to strip metadata in-memory
+    const cleanedBytes = wasmFunc(uint8Array);
     
     const t1 = performance.now();
     const removedBytes = uint8Array.length - cleanedBytes.length;
     
     // Create new blob and auto-download
-    const blob = new Blob([cleanedBytes], { type: file.type });
+    const blob = new Blob([cleanedBytes], { type: file.type || 'application/octet-stream' });
     const url = URL.createObjectURL(blob);
     
     const a = document.createElement('a');
@@ -153,10 +153,10 @@ async function processImageFile(file) {
         </svg>
       </div>
       <div class="result-content">
-        <div class="result-output">Image Metadata Stripped.</div>
+        <div class="result-output">${typeLabel} Metadata Stripped.</div>
         <div class="result-meta">
           <div class="status-dot success"></div>
-          <span>Removed ${removedBytes} bytes of C2PA/Exif tracking data in ${(t1 - t0).toFixed(2)}ms. Downloaded!</span>
+          <span>Removed ${removedBytes} bytes of hidden metadata in ${(t1 - t0).toFixed(2)}ms. Downloaded!</span>
         </div>
       </div>
     `;
@@ -164,9 +164,66 @@ async function processImageFile(file) {
     setStatus(`Stripped ${removedBytes} bytes`, 'success');
     
   } catch (err) {
-    setStatus('Error processing image', 'error');
-    appendAssistantMessage(`<div class="result-avatar" style="background:var(--danger)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></div><div class="result-content"><div class="result-output" style="color:var(--danger)">Error processing image</div><div class="result-meta"><div class="status-dot error"></div><span>${escapeHtml(err.toString())}</span></div></div>`);
+    setStatus(`Error processing ${typeLabel.toLowerCase()}`, 'error');
+    appendAssistantMessage(`<div class="result-avatar" style="background:var(--danger)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></div><div class="result-content"><div class="result-output" style="color:var(--danger)">Error processing file</div><div class="result-meta"><div class="status-dot error"></div><span>${escapeHtml(err.toString())}</span></div></div>`);
     console.error(err);
+  }
+}
+
+async function handleFileUpload(file) {
+  if (!file) return;
+  const ext = file.name.split('.').pop()?.toLowerCase();
+  
+  if (['png', 'jpeg', 'jpg', 'webp', 'bmp', 'gif'].includes(ext)) {
+    await processFile(file, strip_image_bytes_wasm, 'Image');
+  } else if (ext === 'pdf') {
+    await processFile(file, strip_pdf_metadata_wasm, 'PDF');
+  } else if (ext === 'docx') {
+    await processFile(file, strip_docx_metadata_wasm, 'DOCX');
+  } else if (ext === 'epub') {
+    await processFile(file, strip_epub_metadata_wasm, 'EPUB');
+  } else if (ext === 'odt') {
+    await processFile(file, strip_odt_metadata_wasm, 'ODT');
+  } else if (ext === 'svg') {
+    await processFile(file, strip_svg_metadata_wasm, 'SVG');
+  } else if (['txt', 'md', 'json'].includes(ext)) {
+      appendUserMessage(`📎 Uploaded Text: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
+      try {
+         const text = await file.text();
+         const cleaned = sanitize_text_wasm(text, false);
+         const encoder = new TextEncoder();
+         const cleanedBytes = encoder.encode(cleaned);
+         
+         const blob = new Blob([cleanedBytes], { type: file.type || 'text/plain' });
+         const url = URL.createObjectURL(blob);
+         const a = document.createElement('a');
+         a.href = url;
+         a.download = `${file.name.replace(/\.[^/.]+$/, "")}_ghostmark.${ext}`;
+         a.click();
+         setTimeout(() => URL.revokeObjectURL(url), 1000);
+         
+         const responseHtml = `
+           <div class="result-avatar">
+             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+               <path d="M12 2C8.13 2 5 5.13 5 9c0 1.74.56 3.35 1.5 4.66V22l2.5-2 2 2 2-2 2 2 2-2 2.5 2v-8.34A6.96 6.96 0 0019 9c0-3.87-3.13-7-7-7z" fill="currentColor" stroke="none"/>
+               <circle cx="9.5" cy="9" r="1.5" fill="var(--bg-base)"/>
+               <circle cx="14.5" cy="9" r="1.5" fill="var(--bg-base)"/>
+             </svg>
+           </div>
+           <div class="result-content">
+             <div class="result-output">Text Metadata Stripped.</div>
+             <div class="result-meta">
+               <div class="status-dot success"></div>
+               <span>Applied homoglyph injection and removed metadata formatting. Downloaded!</span>
+             </div>
+           </div>
+         `;
+         appendAssistantMessage(responseHtml);
+      } catch (err) {
+         appendAssistantMessage(`<div class="result-avatar" style="background:var(--danger)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></div><div class="result-content"><div class="result-output" style="color:var(--danger)">Error processing text file</div><div class="result-meta"><div class="status-dot error"></div><span>${escapeHtml(err.toString())}</span></div></div>`);
+      }
+  } else {
+    appendAssistantMessage(`<div class="result-avatar" style="background:var(--danger)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></div><div class="result-content"><div class="result-output" style="color:var(--danger)">Invalid file type</div><div class="result-meta"><div class="status-dot error"></div><span>Unsupported file type. Please upload a valid document or image.</span></div></div>`);
   }
 }
 
@@ -177,7 +234,7 @@ document.getElementById('uploadBtn').addEventListener('click', () => {
 
 document.getElementById('fileInput').addEventListener('change', (e) => {
   if (e.target.files.length > 0) {
-    processImageFile(e.target.files[0]);
+    handleFileUpload(e.target.files[0]);
     e.target.value = ''; // reset
   }
 });
@@ -200,12 +257,7 @@ dragOverlay.addEventListener('drop', (e) => {
   dragOverlay.style.display = 'none';
   
   if (e.dataTransfer.files.length > 0) {
-    const file = e.dataTransfer.files[0];
-    if (file.type.startsWith('image/')) {
-      processImageFile(file);
-    } else {
-      appendAssistantMessage(`<div class="result-avatar" style="background:var(--danger)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"></path></svg></div><div class="result-content"><div class="result-output" style="color:var(--danger)">Invalid file type</div><div class="result-meta"><div class="status-dot error"></div><span>Please drop a valid image file (PNG, JPEG, or WebP).</span></div></div>`);
-    }
+    handleFileUpload(e.dataTransfer.files[0]);
   }
 });
 
@@ -274,7 +326,8 @@ document.getElementById('scrubBtn').addEventListener('click', async () => {
         }
         setStatus(grammar ? 'Checking grammar...' : 'Rewriting text...', 'ready');
         
-        // Use larger chunks if using Ollama since it has more memory/VRAM
+        // Chunk size: Ollama can handle 4000 chars, but the tiny 1B WebGPU
+        // model needs small 400-char pieces to avoid hallucinating.
         const maxChunkLen = ollamaMode ? 4000 : 400;
         const chunks = [];
         for (let i = 0; i < wasmCleaned.length; i += maxChunkLen) {
@@ -306,23 +359,22 @@ document.getElementById('scrubBtn').addEventListener('click', async () => {
             const data = await response.json();
             reply = data.response;
           } else {
-            const messages = [
+            const chat = [
               { role: 'system', content: sysPrompt },
               { role: 'user', content: chunk }
             ];
             
-            const result = await pipe(messages, {
-              max_new_tokens: 512,
-              temperature: grammar ? 0.2 : 0.6, // Lowered to 0.6 to prevent pronoun flipping
+            const result = await pipe(chat, {
+              max_new_tokens: 2048,
+              temperature: grammar ? 0.2 : 0.6,
               top_p: 0.9,
               repetition_penalty: 1.05,
               do_sample: true
             });
-            // Extract the assistant's reply from the generated output
             const generatedText = result[0].generated_text;
             reply = generatedText[generatedText.length - 1].content;
           }
-          rewrittenParts.push(reply);
+          rewrittenParts.push(reply.trim());
         }
 
         // 2. Run the algorithmic Homoglyph Perturbation on the generated text
