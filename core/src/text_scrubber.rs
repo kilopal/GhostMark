@@ -43,28 +43,29 @@ impl Rng {
 
 /// The master humanizer — runs multiple passes to destroy AI statistical patterns.
 fn humanize_text(input: &str) -> String {
-    let seed = input.len() as u32 ^ 0xDEAD;
-    let mut rng = Rng::new(seed);
+    let paragraphs: Vec<&str> = input.split("\n\n").collect();
+    let mut processed = Vec::new();
     
-    // Pass 1: Massive word-level synonym replacement (200+ words)
-    let text = pass_synonyms(input, &mut rng);
+    for p in paragraphs {
+        if p.trim().is_empty() {
+            processed.push(p.to_string());
+            continue;
+        }
+        
+        let seed = p.len() as u32 ^ 0xDEAD;
+        let mut rng = Rng::new(seed);
+        
+        let mut text = pass_synonyms(p, &mut rng);
+        text = pass_transitions(&text);
+        text = pass_contractions(&text);
+        text = pass_burstiness(&text, &mut rng);
+        text = pass_fillers(&text, &mut rng);
+        text = pass_strip_ai_padding(&text);
+        
+        processed.push(text);
+    }
     
-    // Pass 2: Replace formal transitions with casual ones
-    let text = pass_transitions(&text);
-    
-    // Pass 3: Inject contractions (AI avoids contractions, humans love them)
-    let text = pass_contractions(&text);
-    
-    // Pass 4: Inject burstiness — break long sentences, vary rhythm
-    let text = pass_burstiness(&text, &mut rng);
-    
-    // Pass 5: Inject human filler phrases randomly
-    let text = pass_fillers(&text, &mut rng);
-    
-    // Pass 6: Strip redundant hedging phrases AI loves
-    let text = pass_strip_ai_padding(&text);
-    
-    text
+    processed.join("\n\n")
 }
 
 // ==================== PASS 1: SYNONYM REPLACEMENT ====================

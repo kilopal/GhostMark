@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowUp, Paperclip, Download, FileCode, Globe, Terminal, AlertCircle, X, ChevronDown, CheckCircle2 } from 'lucide-react';
+import { ArrowUp, Paperclip, Download, FileCode, Globe, Terminal, AlertCircle, X, ChevronDown, CheckCircle2, Code2 } from 'lucide-react';
 import initWasm, { sanitize_text_wasm, strip_image_bytes_wasm, strip_pdf_metadata_wasm, strip_docx_metadata_wasm, strip_epub_metadata_wasm, strip_odt_metadata_wasm, strip_svg_metadata_wasm } from './pkg/ghostmark_wasm.js';
 import wasmUrl from './pkg/ghostmark_wasm_bg.wasm?url';
 import { pipeline, env } from '@huggingface/transformers';
@@ -229,7 +229,7 @@ export default function App() {
   const getEngineName = () => {
     switch (llmMode) {
       case 'none': return 'WASM Only';
-      case 'groq': return 'Groq 70B';
+      case 'groq': return 'BYOK (Groq)';
       case 'ollama': return 'Local Ollama';
       case 'webgpu': return 'Local WebGPU 1B';
     }
@@ -261,7 +261,7 @@ export default function App() {
       {/* Top Navigation */}
       <header className="top-nav">
         <div className="nav-brand">
-          <div className="brand-logo">G</div>
+          <div className="brand-logo">👻</div>
           <span style={{ fontWeight: 600, fontSize: '1.1rem' }}>GhostMark</span>
         </div>
         
@@ -270,11 +270,6 @@ export default function App() {
           <a href="https://github.com/kilopal/GhostMark" target="_blank" rel="noreferrer" className="oss-btn">
             <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"></path><path d="M9 18c-4.51 2-5-2-7-2"></path></svg>
             <span style={{ fontWeight: 500 }}>Star on GitHub</span>
-          </a>
-          
-          <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fkilopal%2FGhostMark%2Ftree%2Fmain%2Fplayground" target="_blank" rel="noreferrer" className="oss-btn deploy">
-            <svg viewBox="0 0 76 76" fill="currentColor" width="14" height="14"><path d="M37.5274 0L75.0548 65H0L37.5274 0Z"></path></svg>
-            <span style={{ fontWeight: 500 }}>Deploy</span>
           </a>
 
           {/* Engine Selector Dropdown */}
@@ -303,12 +298,12 @@ export default function App() {
 
                   <div className="setting-group">
                     <label className="select-label">Deep Scrub Engine</label>
-                    <select value={llmMode} onChange={(e) => setLlmMode(e.target.value as any)} className="modern-select">
-                      <option value="none">Off (WASM Only)</option>
-                      <option value="groq">Groq API (70B)</option>
-                      <option value="ollama">Ollama (Local)</option>
-                      <option value="webgpu">WebGPU (1B)</option>
-                    </select>
+                    <div className="engine-grid">
+                      <button className={`engine-btn ${llmMode === 'none' ? 'active' : ''}`} onClick={() => setLlmMode('none')}>WASM Only</button>
+                      <button className={`engine-btn ${llmMode === 'groq' ? 'active' : ''}`} onClick={() => setLlmMode('groq')}>BYOK (Groq)</button>
+                      <button className={`engine-btn ${llmMode === 'ollama' ? 'active' : ''}`} onClick={() => setLlmMode('ollama')}>Ollama (10B)</button>
+                      <button className={`engine-btn ${llmMode === 'webgpu' ? 'active' : ''}`} onClick={() => setLlmMode('webgpu')}>WebGPU (1B)</button>
+                    </div>
                   </div>
 
                   {llmMode === 'groq' && (
@@ -351,8 +346,11 @@ export default function App() {
         <div className="chat-feed">
           {messages.length === 0 ? (
             <div className="empty-state">
-              <div className="empty-logo">G</div>
+              <div className="empty-logo">👻</div>
               <h2>How can I scrub your data today?</h2>
+              <p className="app-description">
+                GhostMark 👻 A blazing-fast, memory-safe tool written in Rust to strip Anthropic, OpenAI, and EU-mandated AI watermarks (C2PA &amp; Unicode) from text and images.
+              </p>
               
               <div className="suggested-actions">
                  <button onClick={() => fileInputRef.current?.click()} className="suggest-btn">
@@ -367,6 +365,10 @@ export default function App() {
                    <Terminal size={18} />
                    Use the Rust CLI
                  </a>
+                 <a href="https://github.com/kilopal/GhostMark/tree/main/wasm" target="_blank" rel="noreferrer" className="suggest-btn">
+                   <Code2 size={18} />
+                   Developer WASM API
+                 </a>
               </div>
             </div>
           ) : (
@@ -378,7 +380,7 @@ export default function App() {
                   {msg.role === 'user' ? (
                      <div className="avatar user">You</div>
                   ) : (
-                     <div className="avatar assistant">G</div>
+                     <div className="avatar assistant">👻</div>
                   )}
 
                   {/* Message Body */}
@@ -410,7 +412,7 @@ export default function App() {
           {isProcessing && (
              <div className="message-row assistant">
                <div className="message-content animate-fade-in">
-                 <div className="avatar assistant pulse-bg">G</div>
+                 <div className="avatar assistant pulse-bg">👻</div>
                  <div style={{ paddingTop: '6px', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
                    {llmMode === 'webgpu' && hfProgress > 0 && hfProgress < 100 
                       ? `Downloading Model... ${hfProgress}%` 

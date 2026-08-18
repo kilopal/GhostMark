@@ -74,6 +74,8 @@ button { font-family: inherit; }
   align-items: center;
   padding: 0 1.5rem;
   z-index: 40;
+  background: var(--bg-base);
+  border-bottom: 1px solid var(--border);
 }
 
 .nav-brand {
@@ -132,19 +134,18 @@ button { font-family: inherit; }
   position: absolute;
   top: 100%; right: 0;
   margin-top: 0.5rem;
-  width: 320px;
+  width: 380px;
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.3);
   z-index: 60;
-  overflow: hidden;
 }
 
 .modal-backdrop {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  z-index: 50;
+  z-index: 30;
 }
 
 .settings-header {
@@ -168,7 +169,31 @@ button { font-family: inherit; }
 }
 .setting-desc { font-size: 0.75rem; color: var(--text-secondary); margin-left: 1.5rem; }
 
-.select-label { font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+.select-label { font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; }
+
+.engine-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.engine-btn {
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 0.6rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.engine-btn:hover { border-color: var(--border-focus); color: var(--text-primary); }
+.engine-btn.active {
+  background: var(--success);
+  border-color: var(--success);
+  color: white;
+  font-weight: 600;
+}
+
 .modern-select, .modern-input {
   width: 100%; padding: 0.6rem;
   background: var(--bg-base); border: 1px solid var(--border);
@@ -219,7 +244,16 @@ button { font-family: inherit; }
   border-radius: 12px; display: flex; align-items: center; justify-content: center;
   font-weight: 800; font-size: 1.5rem; margin-bottom: 1.5rem;
 }
-.empty-state h2 { font-size: 1.75rem; font-weight: 600; margin-bottom: 2rem; }
+.empty-state h2 { font-size: 1.75rem; font-weight: 600; margin-bottom: 1rem; }
+
+.app-description {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  max-width: 600px;
+  text-align: center;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
 
 .suggested-actions {
   display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;
