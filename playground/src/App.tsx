@@ -92,6 +92,7 @@ export default function App() {
   };
 
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingSessionId, setProcessingSessionId] = useState<string | null>(null);
   const [processingTime, setProcessingTime] = useState(0);
   const [wasmWorker, setWasmWorker] = useState<Worker | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -241,6 +242,7 @@ export default function App() {
     if (textAreaRef.current) textAreaRef.current.style.height = 'auto';
 
     updateMessages((prev: Message[]) => [...prev, { role: 'user', content: textToProcess }]);
+    setProcessingSessionId(activeSessionIdRef.current);
     setIsProcessing(true);
 
     try {
@@ -404,6 +406,7 @@ export default function App() {
       updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: `Error: ${err.message}` }]);
     } finally {
       setIsProcessing(false);
+      setProcessingSessionId(null);
     }
   };
 
@@ -652,7 +655,7 @@ export default function App() {
                         className="modern-input mb-2" 
                         value={cloudProvider} 
                         onChange={(e) => setCloudProvider(e.target.value as any)}
-                        style={{ appearance: 'auto', backgroundColor: 'var(--surface-light)', color: 'var(--text-primary)' }}
+                        style={{ appearance: 'auto' }}
                       >
                         <option value="groq">Groq (Fastest)</option>
                         <option value="openai">OpenAI (ChatGPT)</option>
@@ -768,7 +771,7 @@ export default function App() {
           )}
 
           {/* Loading Indicator */}
-          {isProcessing && (
+          {isProcessing && processingSessionId === activeSessionId && (
              <div className="message-row assistant">
                <div className="message-content animate-fade-in">
                  <div className="avatar assistant pulse-bg">👻</div>
