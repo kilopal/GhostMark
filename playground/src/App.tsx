@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowUp, Paperclip, Download, FileCode, Globe, Terminal, AlertCircle, X, ChevronDown, CheckCircle2, Code2, Trash2, Menu, Bot, Square, RotateCcw, Sun, Moon } from 'lucide-react';
+import { ArrowUp, Download, FileCode, Globe, Terminal, AlertCircle, X, ChevronDown, CheckCircle2, Code2, Trash2, Menu, Bot, Square, RotateCcw, Sun, Moon, Image, FileText } from 'lucide-react';
 import { pipeline, env } from '@huggingface/transformers';
 
 type Message = {
@@ -140,6 +140,7 @@ export default function App() {
   
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const feedEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-resize textarea
@@ -904,10 +905,14 @@ export default function App() {
             </label>
           </div>
           <div className="input-wrapper">
-            <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="*/*,application/pdf,text/plain,.docx,.pdf,.txt" onChange={(e) => { if (e.target.files && e.target.files[0]) handleFileUpload(e.target.files[0]); }} />
+            <input type="file" ref={imageInputRef} style={{ display: 'none' }} accept="image/*" onChange={(e) => { if (e.target.files && e.target.files[0]) handleFileUpload(e.target.files[0]); }} />
+            <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept=".pdf,.docx,.epub,.odt,.svg,.txt,.md,.json,application/pdf,text/plain" onChange={(e) => { if (e.target.files && e.target.files[0]) handleFileUpload(e.target.files[0]); }} />
             
-            <button className="attach-btn" onClick={() => fileInputRef.current?.click()} title="Attach File">
-              <Paperclip size={20} />
+            <button className="attach-btn" onClick={() => imageInputRef.current?.click()} title="Attach Image">
+              <Image size={20} />
+            </button>
+            <button className="attach-btn" onClick={() => fileInputRef.current?.click()} title="Attach Document">
+              <FileText size={20} />
             </button>
             
             <textarea
