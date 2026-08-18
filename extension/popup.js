@@ -34,8 +34,8 @@ async function getParaphraser() {
       // Use Llama-3.2-1B-Instruct (1.2 Billion parameters) via ONNX
       // This is a large model (~800MB - 1.5GB quantized) and will be slower on CPU
       const pipe = await pipeline('text-generation', 'onnx-community/Llama-3.2-1B-Instruct', {
-        dtype: 'q4f16', // Typical for WebGPU
-        device: 'webgpu',
+        dtype: 'q8', // Fast on both WebGPU and WASM fallback
+        device: navigator.gpu ? 'webgpu' : 'wasm',
         progress_callback: (progress) => {
           if (progress.status === 'progress' && progress.progress) {
             setStatus(`Downloading 1B Model: ${Math.round(progress.progress)}%`, 'ready');
