@@ -115,8 +115,9 @@ button { font-family: inherit; }
 .layout {
   display: flex;
   flex-direction: row;
+  height: 100vh;
   height: 100dvh;
-  width: 100vw;
+  width: 100%;
   position: relative;
   overflow: hidden;
 }
@@ -240,6 +241,8 @@ button { font-family: inherit; }
 
 /* Top Nav */
 .top-nav {
+  position: sticky;
+  top: 0;
   flex: 0 0 60px;
   display: flex;
   justify-content: space-between;
