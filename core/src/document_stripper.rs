@@ -117,9 +117,8 @@ pub fn strip_svg_metadata(bytes: &[u8]) -> Result<Vec<u8>, String> {
                     if let Some(end_quote) = result[after_eq + 1..].find(quote) {
                         let end_abs = after_eq + 1 + end_quote + 1;
                         // Also remove leading whitespace before the attribute
-                        let attr_start = result[..start]
-                            .rfind(char::is_whitespace)
-                            .unwrap_or(start);
+                        let attr_start =
+                            result[..start].rfind(char::is_whitespace).unwrap_or(start);
                         result = format!("{}{}", &result[..attr_start], &result[end_abs..]);
                         continue;
                     }
