@@ -357,6 +357,9 @@ export default function App() {
          const data = await res.json();
          currentText = data.response;
       } else if (llmMode === 'webgpu') {
+         if (window.innerWidth < 768 || /Mobi|Android/i.test(navigator.userAgent)) {
+             throw new Error("WebGPU 3.8B models will crash mobile browsers. Please select Cloud or WASM engine.");
+         }
          setProcessStatus('Loading 3.8B WebGPU Model into VRAM (Takes ~10-25s)...');
          const pipe = await getParaphraser();
          
@@ -865,7 +868,19 @@ export default function App() {
               <span className="toggle-label">WASM Fast</span>
             </label>
             <label className="toggle-row" title="Rewrite text using WebGPU or Cloud AI APIs">
-              <input type="checkbox" className="toggle-checkbox" checked={llmMode === 'webgpu' || llmMode === 'cloud'} onChange={(e) => setLlmMode(e.target.checked ? 'webgpu' : 'none')} />
+              <input type="checkbox" className="toggle-checkbox" checked={llmMode === 'webgpu' || llmMode === 'cloud' || llmMode === 'ollama'} onChange={(e) => {
+                if (e.target.checked) {
+                  if (window.innerWidth < 768 || /Mobi|Android/i.test(navigator.userAgent)) {
+                    alert("WebGPU 3.8B models require 4GB+ of free RAM and will crash mobile browsers. Defaulting to Cloud Engine.");
+                    setLlmMode('cloud');
+                    setShowSettings(true);
+                  } else {
+                    setLlmMode('webgpu');
+                  }
+                } else {
+                  setLlmMode('none');
+                }
+              }} />
               <div className="toggle-track"></div>
               <span className="toggle-label">Deep Scrub</span>
             </label>

@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.12.1] - 2026-08-18
+### Fixed
+- **Mobile Responsiveness**: Fixed toggle bar layout on mobile devices so switches no longer overlap or wrap poorly.
+- **WebGPU Mobile Crash**: Added a fallback where the "Deep Scrub" quick toggle now prevents the 3.8B WebGPU model from downloading on mobile devices to prevent out-of-memory crashes, instead gracefully defaulting to the Cloud engine.
+
 ## [0.12.0] - 2026-08-18
 ### Added
 - **UI/UX Overhaul**: Completely redesigned the Playground to feature an ultra-clean, high-contrast **Light Theme** inspired by FarmJS and Better-Auth. Replaced the generic dark mode and pill shapes with stark zinc whites, crisp 1px borders, and professional typography.
