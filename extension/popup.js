@@ -61,7 +61,7 @@ async function getParaphraser() {
 
       // Use Microsoft Phi-3-mini-4k-instruct (3.8 Billion parameters) via ONNX
       // This is a massive model (~2.2GB quantized) requiring WebGPU and high RAM
-      const pipe = await pipeline('text-generation', 'onnx-community/Phi-3-mini-4k-instruct', {
+      const pipe = await pipeline('text-generation', 'Xenova/Phi-3-mini-4k-instruct', {
         dtype: 'q4f16', // Recommended for 3B+ models on WebGPU
         device: navigator.gpu ? 'webgpu' : 'wasm',
         progress_callback: (progress) => {

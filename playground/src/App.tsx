@@ -188,7 +188,7 @@ export default function App() {
     env.backends.onnx.wasm!.numThreads = 1;
     env.backends.onnx.wasm!.proxy = false;
 
-    const pipe = await pipeline('text-generation', 'onnx-community/Phi-3-mini-4k-instruct', {
+    const pipe = await pipeline('text-generation', 'Xenova/Phi-3-mini-4k-instruct', {
       dtype: 'q4f16',
       device: (navigator as any).gpu ? 'webgpu' : 'wasm',
       progress_callback: (progress: any) => {
