@@ -785,7 +785,7 @@ export default function App() {
                </div>
              </div>
           )}
-          <div ref={feedEndRef} style={{ height: '120px' }} />
+          <div ref={feedEndRef} style={{ height: '180px' }} />
         </div>
 
         {/* Input Box Area */}
