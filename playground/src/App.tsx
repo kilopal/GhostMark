@@ -112,6 +112,7 @@ export default function App() {
   // Transformers.js State
   const [hfPipeline, setHfPipeline] = useState<any>(null);
   const [hfProgress, setHfProgress] = useState(0);
+  const [processStatus, setProcessStatus] = useState<string>('Processing...');
 
   // File Upload State
   const [isHoveringFile, setIsHoveringFile] = useState(false);
@@ -240,12 +241,14 @@ export default function App() {
       }
       
       // 1. Pre-processing
+      setProcessStatus('Applying Zero-Width WASM Injection...');
       if (wasmWorker) {
         currentText = await runWasmWorker('sanitize_text', textToProcess);
       }
 
       // 2. LLM Engine
       if (llmMode === 'groq' && groqKey) {
+         setProcessStatus('Scrubbing via BYOK (Groq)...');
          const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
@@ -262,6 +265,7 @@ export default function App() {
          const data = await res.json();
          currentText = data.choices[0].message.content;
       } else if (llmMode === 'ollama') {
+         setProcessStatus('Scrubbing via Local Ollama...');
          const res = await fetch(`${ollamaUrl}/api/generate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -276,8 +280,10 @@ export default function App() {
          const data = await res.json();
          currentText = data.response;
       } else if (llmMode === 'webgpu') {
+         setProcessStatus('Loading 3.8B WebGPU Model into VRAM (Takes ~10-25s)...');
          const pipe = await getParaphraser();
          
+         setProcessStatus('Scrubbing via WebGPU Neural Network...');
          // Split into ~400 char chunks. The 1B model is too small to handle
          // full essays in one shot — it hallucinates. Chunking is what made
          // the extension achieve 0% AI detection consistently.
@@ -693,7 +699,7 @@ export default function App() {
                  <div style={{ paddingTop: '6px', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
                    {llmMode === 'webgpu' && hfProgress > 0 && hfProgress < 100 
                       ? `Downloading Model... ${hfProgress}%` 
-                      : <span className="animate-pulse">Processing... ({processingTime.toFixed(1)}s)</span>
+                      : <span className="animate-pulse">{processStatus} ({processingTime.toFixed(1)}s)</span>
                    }
                  </div>
                </div>
