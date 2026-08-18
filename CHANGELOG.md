@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.12.0] - 2026-08-18
+### Added
+- **Multi-Provider BYOK Engine**: Expanded the "BYOK (Groq)" engine in the Playground to support OpenAI (ChatGPT), Google Gemini, DeepSeek, and Groq APIs. API keys are now securely persisted to the browser's `localStorage`.
+
+### Fixed
+- **Homoglyph Injection Bug**: Fixed a severe bug in `ghostmark-core` where the WASM text scrubber was running an abandoned, destructive synonym-replacement algorithm ("Humanizer") instead of injecting zero-width homoglyphs. Homoglyph injection now works flawlessly.
+
 ## [0.11.0] - 2026-08-18
 ### Added
 - **WASM Web Worker Multithreading**: Migrated the WASM processing engine in both the Web Playground and Chrome Extension to run inside a dedicated Web Worker. This ensures the UI remains fully responsive with zero-blocking when scrubbing massive files (e.g., 500-page EPUBs or heavy PDFs) using zero-copy `ArrayBuffer` transfers.

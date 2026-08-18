@@ -12,7 +12,7 @@ pub fn sanitize_text(input: &str, aggressive: bool) -> String {
     }
 
     if aggressive {
-        humanize_text(&cleaned)
+        apply_homoglyphs(&cleaned)
     } else {
         cleaned
     }
