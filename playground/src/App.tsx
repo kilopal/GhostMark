@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowUp, Paperclip, Download, FileCode, Globe, Terminal, AlertCircle, X, ChevronDown, CheckCircle2, Code2, Trash2 } from 'lucide-react';
+import { ArrowUp, Paperclip, Download, FileCode, Globe, Terminal, AlertCircle, X, ChevronDown, CheckCircle2, Code2, Trash2, Menu } from 'lucide-react';
 import initWasm, { sanitize_text_wasm, strip_image_bytes_wasm, strip_pdf_metadata_wasm, strip_docx_metadata_wasm, strip_epub_metadata_wasm, strip_odt_metadata_wasm, strip_svg_metadata_wasm } from './pkg/ghostmark_wasm.js';
 import wasmUrl from './pkg/ghostmark_wasm_bg.wasm?url';
 import { pipeline, env } from '@huggingface/transformers';
@@ -100,6 +100,7 @@ export default function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingTime, setProcessingTime] = useState(0);
   const [wasmEngine, setWasmEngine] = useState<any>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // Settings State
   const [showSettings, setShowSettings] = useState(false);
@@ -341,9 +342,11 @@ export default function App() {
              handleFileUpload(e.dataTransfer.files[0]);
            }
          }}>
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && <div className="sidebar-overlay" onClick={() => setIsSidebarOpen(false)} />}
       
-      <aside className="sidebar">
-        <button className="sidebar-btn sidebar-new-chat" onClick={() => { setActiveSessionId(Date.now().toString()); }}>
+      <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
+        <button className="sidebar-btn sidebar-new-chat" onClick={() => setActiveSessionId(Date.now().toString())}>
           <span>New Chat</span>
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
         </button>
@@ -411,8 +414,11 @@ export default function App() {
       {/* Top Navigation */}
       <header className="top-nav">
         <div className="nav-brand">
+          <button className="mobile-menu-btn" onClick={() => setIsSidebarOpen(true)}>
+             <Menu size={20} />
+          </button>
           <div className="brand-logo">👻</div>
-          <span style={{ fontWeight: 600, fontSize: '1.1rem' }}>GhostMark</span>
+          <span style={{ fontWeight: 600, fontSize: '1.1rem' }} className="brand-title">GhostMark</span>
         </div>
         
         <div className="nav-actions">
@@ -452,7 +458,13 @@ export default function App() {
                       <button className={`engine-btn ${llmMode === 'none' ? 'active' : ''}`} onClick={() => setLlmMode('none')}>WASM Only</button>
                       <button className={`engine-btn ${llmMode === 'groq' ? 'active' : ''}`} onClick={() => setLlmMode('groq')}>BYOK (Groq)</button>
                       <button className={`engine-btn ${llmMode === 'ollama' ? 'active' : ''}`} onClick={() => setLlmMode('ollama')}>Ollama (10B)</button>
-                      <button className={`engine-btn ${llmMode === 'webgpu' ? 'active' : ''}`} onClick={() => setLlmMode('webgpu')}>WebGPU (1B)</button>
+                      <button className={`engine-btn ${llmMode === 'webgpu' ? 'active' : ''}`} onClick={() => {
+                        if (window.innerWidth < 768 || /Mobi|Android/i.test(navigator.userAgent)) {
+                          alert("WebGPU 1B models require 2GB+ of free RAM and may crash mobile browsers. Please use a desktop device or another engine.");
+                        } else {
+                          setLlmMode('webgpu');
+                        }
+                      }}>WebGPU (1B)</button>
                     </div>
                   </div>
 
