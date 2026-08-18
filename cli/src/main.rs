@@ -29,6 +29,10 @@ enum Commands {
         /// Optional output file path (if not provided, prints to stdout)
         #[arg(short, long)]
         output: Option<String>,
+
+        /// Aggressively perturb tokens to shatter statistical watermarks like SynthID-Text
+        #[arg(long)]
+        shatter_synthid: bool,
     },
     /// Strips cryptographic C2PA and tracking metadata from JPEG/PNG images
     CleanImage {
@@ -55,6 +59,10 @@ enum Commands {
         /// The target directory
         #[arg(short, long)]
         dir: String,
+
+        /// Aggressively perturb tokens to shatter statistical watermarks like SynthID-Text
+        #[arg(long)]
+        shatter_synthid: bool,
     },
     /// Process text using a local Ollama server before applying homoglyphs
     Ollama {
@@ -84,6 +92,7 @@ async fn main() {
             input,
             file,
             output,
+            shatter_synthid,
         } => {
             let text = if *file {
                 fs::read_to_string(input).unwrap_or_else(|err| {
@@ -94,7 +103,11 @@ async fn main() {
                 input.clone()
             };
 
-            let clean = text_scrubber::sanitize_text(&text, false);
+            let clean = if *shatter_synthid {
+                text_scrubber::shatter_synthid_text(&text)
+            } else {
+                text_scrubber::sanitize_text(&text, false)
+            };
 
             if let Some(out_path) = output {
                 fs::write(out_path, &clean).unwrap_or_else(|err| {
@@ -121,7 +134,7 @@ async fn main() {
         Commands::Serve { host, port } => {
             proxy::start_server(host, *port).await;
         }
-        Commands::BatchClean { dir } => {
+        Commands::BatchClean { dir, shatter_synthid } => {
             println!("🔍 Scanning directory: {}", dir);
             let mut cleaned_files = 0;
 
@@ -136,7 +149,11 @@ async fn main() {
 
                     if ext == "txt" || ext == "md" || ext == "json" {
                         if let Ok(text) = fs::read_to_string(path) {
-                            let clean = text_scrubber::sanitize_text(&text, false);
+                            let clean = if *shatter_synthid {
+                                text_scrubber::shatter_synthid_text(&text)
+                            } else {
+                                text_scrubber::sanitize_text(&text, false)
+                            };
                             if text != clean {
                                 fs::write(path, clean).unwrap_or_else(|e| {
                                     eprintln!("Failed to write {}: {}", path.display(), e)

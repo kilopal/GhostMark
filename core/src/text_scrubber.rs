@@ -47,8 +47,8 @@ impl Rng {
     }
 }
 
-/// The master humanizer — runs multiple passes to destroy AI statistical patterns.
-fn humanize_text(input: &str) -> String {
+/// The master humanizer — runs multiple passes to destroy AI statistical patterns (e.g. SynthID-Text).
+pub fn shatter_synthid_text(input: &str) -> String {
     let paragraphs: Vec<&str> = input.split("\n\n").collect();
     let mut processed = Vec::new();
 
@@ -67,6 +67,9 @@ fn humanize_text(input: &str) -> String {
         text = pass_burstiness(&text, &mut rng);
         text = pass_fillers(&text, &mut rng);
         text = pass_strip_ai_padding(&text);
+
+        // Finally, aggressively strip invisible unicode and inject homoglyphs to shatter tokenizers
+        text = sanitize_text(&text, true);
 
         processed.push(text);
     }
@@ -247,7 +250,7 @@ fn pass_transitions(input: &str) -> String {
             "In today's quickly evolving",
             "In a world that moves quickly",
         ),
-        ("In today's fast-paced", "In a world that moves fast"),
+        ("In today's fast-paced world", "In a fast-moving world"),
         (
             "it becomes increasingly evident that",
             "it's pretty clear that",

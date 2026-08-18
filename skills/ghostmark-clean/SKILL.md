@@ -14,124 +14,63 @@ Agent skill for stripping AI provenance marks from **text** (invisible Unicode)
 and **files** (C2PA / EXIF / XMP metadata, PDF info dictionaries, DOCX properties).
 
 Read if needed:
-
-- `references/api-reference.md` — Full HTTP API documentation
 - `references/supported-formats.md` — Which file types are supported and what gets stripped
 
-## Service Access
+## Executable Access
 
-Base URL comes from `GHOSTMARK_URL`, default `http://127.0.0.1:8080`:
+This skill is fully self-contained! The ultra-fast Rust `ghostmark` executable (or `ghostmark.exe` on Windows) is bundled in the **exact same directory** as this `SKILL.md` file.
 
-```bash
-GM="${GHOSTMARK_URL:-http://127.0.0.1:8080}"
-```
+**DO NOT** attempt to call an HTTP API or use Python. Always invoke the local binary using its absolute path based on where you found this skill.
 
-The service is started via Docker (`docker compose up -d`) or locally
-(`cargo run -p ghostmark -- serve`). **Always check health first**, and stop
-with a clear message if unreachable:
-
-```bash
-curl -sf "$GM/health"
-# {"ok": true, "version": "...", "engine": "GhostMark/Rust"}
-```
-
-## HTTP API
-
-| Method | Path | Body | Returns |
-| --- | --- | --- | --- |
-| `GET` | `/health` | — | `{"ok", "version", "engine"}` |
-| `POST` | `/clean/text` | `{"text": "..."}` | `{"ok", "original_len", "cleaned_len", "chars_removed", "cleaned", "elapsed_us"}` |
-| `POST` | `/inspect/text` | `{"text": "..."}` | `{"ok", "suspicious", "suspicious_chars", "total_suspicious"}` |
-| `POST` | `/clean/image` | `{"file": "<base64>", "name": "photo.jpg"}` | `{"ok", "original_size", "cleaned_size", "bytes_removed", "cleaned", "elapsed_us"}` |
+For example, if you are reading `~/.gemini/config/skills/ghostmark-clean/SKILL.md`, the binary is at `~/.gemini/config/skills/ghostmark-clean/ghostmark`.
 
 ## Workflow
 
 ### 1. Classify Input
 
-| Input | Route |
+Determine the target file type and use the appropriate GhostMark CLI command:
+
+| Input | Command |
 | --- | --- |
-| Pasted / clipboard text | `/inspect/text` then `/clean/text` |
-| `.txt` / `.md` / `.json` / code | `/clean/text` (read file, send contents) |
-| `.png` / `.jpg` / `.jpeg` / `.webp` | `/clean/image` (base64 encode, send) |
-| `.pdf` | CLI: `ghostmark batch-clean --dir .` |
-| `.docx` | CLI: `ghostmark batch-clean --dir .` |
-| Directory | CLI: `ghostmark batch-clean --dir <path>` |
+| `.txt` / `.md` / `.json` / code | `/path/to/ghostmark clean-text --file <input> --output <output>` |
+| `.png` / `.jpg` / `.jpeg` / `.webp` | `/path/to/ghostmark clean-image --input <input> --output <output>` |
+| Directory / batch processing | `/path/to/ghostmark batch-clean --dir <path>` |
 
-### 2. Inspect First (Text)
+*(Note: GhostMark's `batch-clean` command automatically handles `.pdf`, `.docx`, `.epub`, `.odt`, `.svg`, images, and text files recursively!)*
 
-Always inspect before cleaning so you can report what was found:
+### 2. Execution
 
+**Text (Standard Scrubbing):**
 ```bash
-curl -s -X POST "$GM/inspect/text" \
-  -H "Content-Type: application/json" \
-  -d "{\"text\": \"$(cat file.txt | jq -Rs .)\"}"
+/path/to/ghostmark clean-text --file draft.md --output draft.cleaned.md
 ```
 
-Show a short summary: number of suspicious codepoints, their types (Zero Width
-Space, Unicode Tag Character, etc.), and positions.
-
-### 3. Clean
-
-**Text:**
-
+**Text (SynthID-Text Defeat / Statistical Humanizer):**
+If you suspect the text contains statistical watermarks like Claude's SynthID-Text, use the `--shatter-synthid` flag to heavily perturb the tokens (synonym swapping, transition changes, etc.) to destroy the watermark sequence:
 ```bash
-curl -s -X POST "$GM/clean/text" \
-  -H "Content-Type: application/json" \
-  -d '{"text": "Hello\u200Bworld"}'
+/path/to/ghostmark clean-text --file draft.md --output draft.cleaned.md --shatter-synthid
 ```
 
-Write the `cleaned` field back to the file or display it.
+**Text (Deep Rewrite via Ollama):**
+For a completely "scorched-earth" approach that defeats all statistical watermarks by rewriting the entire text locally:
+```bash
+/path/to/ghostmark ollama --file draft.md --model llama3 --output draft.rewritten.md
+```
 
 **Images:**
-
 ```bash
-curl -s -X POST "$GM/clean/image" \
-  -H "Content-Type: application/json" \
-  -d "{\"file\": \"$(base64 < photo.jpg | tr -d '\n')\", \"name\": \"photo.jpg\"}"
+/path/to/ghostmark clean-image --input photo.jpg --output photo.cleaned.jpg
 ```
 
-Decode the returned `cleaned` base64 into the output file.
-
-On Windows agents, build base64 with:
-```powershell
-[Convert]::ToBase64String([IO.File]::ReadAllBytes("photo.jpg"))
+**Batch / Folders (including PDF/DOCX):**
+```bash
+/path/to/ghostmark batch-clean --dir ./my-files/
 ```
+*(You can also pass `--shatter-synthid` to the `batch-clean` command to aggressively perturb all text/markdown files found in the directory).*
 
-### 4. Report
+### 3. Report
 
 Always state:
-- What was found (count and types of suspicious characters, or metadata presence)
-- What was removed (chars_removed for text, bytes_removed for images)
-- Processing time (elapsed_us)
-- Write output to `*.cleaned.*` unless the user asked for in-place editing
-
-## CLI Fallback
-
-If the HTTP service is not running, you can use the CLI directly:
-
-```bash
-# Clean a single text file
-ghostmark clean-text --file input.txt --output clean.txt
-
-# Clean an image
-ghostmark clean-image --input photo.jpg --output photo.clean.jpg
-
-# Batch clean a directory (text, images, PDF, DOCX)
-ghostmark batch-clean --dir ./my-files/
-```
-
-Build the CLI with `cargo build --release -p ghostmark`.
-
-## Service Not Reachable?
-
-If `$GM/health` fails, tell the user to start the service:
-
-```bash
-# Option 1: Docker
-docker compose up -d
-
-# Option 2: Cargo
-cargo run -p ghostmark -- serve --host 127.0.0.1 --port 8080
-```
-
-Do **not** attempt to clean manually — use the GhostMark engine.
+- What files were scrubbed.
+- Output the GhostMark CLI's success messages (which mention what was stripped).
+- Note that GhostMark runs purely locally using memory-safe Rust.

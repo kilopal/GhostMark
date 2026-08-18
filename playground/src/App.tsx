@@ -107,6 +107,7 @@ export default function App() {
   // Settings State
   const [showSettings, setShowSettings] = useState(false);
   const [useHomoglyphs, setUseHomoglyphs] = useState(true);
+  const [useShatterSynthId, setUseShatterSynthId] = useState(false);
   const [useSynthIdDetect, setUseSynthIdDetect] = useState(false);
   const [llmMode, setLlmMode] = useState<'none' | 'cloud' | 'ollama' | 'webgpu'>('none');
   const [cloudProvider, setCloudProvider] = useState<'groq' | 'openai' | 'gemini' | 'deepseek'>('groq');
@@ -266,9 +267,9 @@ export default function App() {
       }
       
       // 1. Pre-processing
-      setProcessStatus('Applying Zero-Width WASM Injection...');
+      setProcessStatus('Applying WASM Scrubbing...');
       if (wasmWorker) {
-        currentText = await runWasmWorker('sanitize_text', textToProcess);
+        currentText = await runWasmWorker(useShatterSynthId ? 'shatter_synthid_text' : 'sanitize_text', textToProcess);
       }
 
       if (controller.signal.aborted) throw new Error("Cancelled by user");
@@ -682,6 +683,14 @@ export default function App() {
                       <span>Homoglyph Injection (Layer B)</span>
                     </label>
                     <p className="setting-desc">Injects zero-width characters to bypass statistical AI detectors.</p>
+                  </div>
+
+                  <div className="setting-group">
+                    <label className="checkbox-label">
+                      <input type="checkbox" checked={useShatterSynthId} onChange={(e) => setUseShatterSynthId(e.target.checked)} />
+                      <span>Shatter SynthID Watermark</span>
+                    </label>
+                    <p className="setting-desc">Heavily perturbs token sequences by replacing synonyms and altering phrasing to destroy text watermarks.</p>
                   </div>
 
                   <div className="setting-group">

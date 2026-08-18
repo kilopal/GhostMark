@@ -3,6 +3,8 @@
 
 export function sanitize_text_wasm(input: string, aggressive: boolean): string;
 
+export function shatter_synthid_wasm(input: string): string;
+
 export function strip_docx_metadata_wasm(raw: Uint8Array): Uint8Array;
 
 export function strip_epub_metadata_wasm(raw: Uint8Array): Uint8Array;
@@ -20,6 +22,7 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly sanitize_text_wasm: (a: number, b: number, c: number) => [number, number];
+    readonly shatter_synthid_wasm: (a: number, b: number) => [number, number];
     readonly strip_docx_metadata_wasm: (a: number, b: number) => [number, number, number, number];
     readonly strip_epub_metadata_wasm: (a: number, b: number) => [number, number, number, number];
     readonly strip_image_bytes_wasm: (a: number, b: number) => [number, number, number, number];

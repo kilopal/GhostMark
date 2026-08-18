@@ -1,5 +1,6 @@
 import init, { 
     sanitize_text_wasm, 
+    shatter_synthid_wasm,
     strip_image_bytes_wasm,
     strip_pdf_metadata_wasm, 
     strip_docx_metadata_wasm, 
@@ -25,6 +26,10 @@ self.onmessage = async (e) => {
         } 
         else if (action === 'sanitize_text_homoglyph') {
             const cleanedText = sanitize_text_wasm(payload, true);
+            self.postMessage({ id, success: true, payload: cleanedText });
+        }
+        else if (action === 'shatter_synthid_text') {
+            const cleanedText = shatter_synthid_wasm(payload);
             self.postMessage({ id, success: true, payload: cleanedText });
         }
         else if (action === 'strip_file') {
