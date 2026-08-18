@@ -655,3 +655,32 @@ button { font-family: inherit; }
   color: var(--text-secondary);
   transition: color 0.2s ease;
 }
+
+@media (max-width: 768px) {
+  .toggles-container {
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .toggle-row {
+    gap: 6px;
+  }
+  .toggle-label {
+    font-size: 11px;
+  }
+  .toggle-track {
+    width: 24px;
+    height: 14px;
+  }
+  .toggle-track::after {
+    width: 10px;
+    height: 10px;
+    top: 2px;
+    left: 2px;
+  }
+  .toggle-checkbox:checked + .toggle-track::after {
+    left: 12px;
+  }
+  .input-container {
+    padding: 0.75rem 0.5rem;
+  }
+}
