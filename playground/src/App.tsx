@@ -263,8 +263,6 @@ export default function App() {
       if (useSynthIdDetect && geminiKey) {
          updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: 'Checking for SynthID watermark...' }]);
          scoreBefore = await checkSynthId(textToProcess);
-      } else if (useSynthIdDetect && !geminiKey) {
-         updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: 'SynthID detection skipped: Gemini API Key missing. Please add it in Engine Settings.' }]);
       }
       
       // 1. Pre-processing
@@ -886,9 +884,10 @@ export default function App() {
             </label>
             <label className="toggle-row" title="Check SynthID watermarks with Gemini API">
               <input type="checkbox" className="toggle-checkbox" checked={useSynthIdDetect} onChange={(e) => {
-                setUseSynthIdDetect(e.target.checked);
                 if (e.target.checked && !geminiKey) {
                   setShowSettings(true);
+                } else {
+                  setUseSynthIdDetect(e.target.checked);
                 }
               }} />
               <div className="toggle-track"></div>
