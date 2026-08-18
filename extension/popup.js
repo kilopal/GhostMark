@@ -326,12 +326,37 @@ document.getElementById('scrubBtn').addEventListener('click', async () => {
         }
         setStatus(grammar ? 'Checking grammar...' : 'Rewriting text...', 'ready');
         
-        // Chunk size: Ollama can handle 4000 chars, but the tiny 1B WebGPU
-        // model needs small 400-char pieces to avoid hallucinating.
-        const maxChunkLen = ollamaMode ? 4000 : 400;
         const chunks = [];
-        for (let i = 0; i < wasmCleaned.length; i += maxChunkLen) {
-          chunks.push(wasmCleaned.slice(i, i + maxChunkLen));
+        if (ollamaMode) {
+          const words = wasmCleaned.split(' ');
+          let currentChunk = '';
+          for (const word of words) {
+            if ((currentChunk + word).length > 4000 && currentChunk.length > 0) {
+              chunks.push(currentChunk.trim());
+              currentChunk = '';
+            }
+            currentChunk += word + ' ';
+          }
+          if (currentChunk.trim().length > 0) chunks.push(currentChunk.trim());
+        } else {
+          const rawParagraphs = wasmCleaned.split(/\n+/);
+          for (const p of rawParagraphs) {
+            if (!p.trim()) continue;
+            if (p.length < 1500) {
+              chunks.push(p.trim());
+            } else {
+              const sentences = p.match(/[^.!?]+[.!?]+/g) || [p];
+              let currentChunk = '';
+              for (const s of sentences) {
+                if ((currentChunk + s).length > 1000 && currentChunk.length > 0) {
+                  chunks.push(currentChunk.trim());
+                  currentChunk = '';
+                }
+                currentChunk += s + ' ';
+              }
+              if (currentChunk.trim().length > 0) chunks.push(currentChunk.trim());
+            }
+          }
         }
 
         const rewrittenParts = [];
@@ -365,7 +390,7 @@ document.getElementById('scrubBtn').addEventListener('click', async () => {
             ];
             
             const result = await pipe(chat, {
-              max_new_tokens: 2048,
+              max_new_tokens: 512,
               temperature: grammar ? 0.2 : 0.6,
               top_p: 0.9,
               repetition_penalty: 1.05,

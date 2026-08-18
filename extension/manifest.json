@@ -4,7 +4,13 @@
   "version": "0.4.0",
   "description": "Strip AI provenance watermarks locally in your browser.",
   "action": {
-    "default_title": "Open GhostMark"
+    "default_title": "Open GhostMark",
+    "default_icon": "icon.png"
+  },
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
   },
   "side_panel": {
     "default_path": "popup.html"

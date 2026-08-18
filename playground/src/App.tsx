@@ -235,9 +235,24 @@ export default function App() {
          // Split into ~400 char chunks. The 1B model is too small to handle
          // full essays in one shot — it hallucinates. Chunking is what made
          // the extension achieve 0% AI detection consistently.
+         const rawParagraphs = currentText.split(/\n+/);
          const chunks: string[] = [];
-         for (let i = 0; i < currentText.length; i += 400) {
-           chunks.push(currentText.slice(i, i + 400));
+         for (const p of rawParagraphs) {
+           if (!p.trim()) continue;
+           if (p.length < 1500) {
+             chunks.push(p.trim());
+           } else {
+             const sentences = p.match(/[^.!?]+[.!?]+/g) || [p];
+             let currentChunk = '';
+             for (const s of sentences) {
+               if ((currentChunk + s).length > 1000 && currentChunk.length > 0) {
+                 chunks.push(currentChunk.trim());
+                 currentChunk = '';
+               }
+               currentChunk += s + ' ';
+             }
+             if (currentChunk.trim().length > 0) chunks.push(currentChunk.trim());
+           }
          }
 
          const rewrittenParts: string[] = [];
@@ -247,7 +262,7 @@ export default function App() {
              { role: 'user', content: chunk }
            ];
            const result = await pipe(chat, {
-             max_new_tokens: 2048,
+             max_new_tokens: 512,
              temperature: 0.6,
              top_p: 0.9,
              repetition_penalty: 1.05,
