@@ -134,7 +134,10 @@ async fn main() {
         Commands::Serve { host, port } => {
             proxy::start_server(host, *port).await;
         }
-        Commands::BatchClean { dir, shatter_synthid } => {
+        Commands::BatchClean {
+            dir,
+            shatter_synthid,
+        } => {
             println!("🔍 Scanning directory: {}", dir);
             let mut cleaned_files = 0;
 
