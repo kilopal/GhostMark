@@ -24,6 +24,12 @@ ROADMAP.md
 simulate_anthropic.py
 watermarked_output.txt
 
+# Scratch / research repos
+scratch_repo/
+
+# Node
+node_modules/
+
 # Extension build files
 extension/node_modules/
 extension/dist/
