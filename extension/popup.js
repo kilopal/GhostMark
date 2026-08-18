@@ -1,4 +1,4 @@
-import init, { sanitize_text_wasm, strip_image_bytes_wasm, strip_pdf_metadata_wasm, strip_docx_metadata_wasm, strip_epub_metadata_wasm, strip_odt_metadata_wasm, strip_svg_metadata_wasm } from './pkg/ghostmark_wasm.js';
+// Web Worker implementation for WASM
 import { pipeline, env } from '@huggingface/transformers';
 
 // ==========================================
@@ -18,6 +18,34 @@ env.backends.onnx.wasm.wasmPaths = chrome.runtime.getURL('dist/assets/');
 let paraphraser = null;
 let pipelinePromise = null;
 let wasmLoaded = false;
+let wasmWorker = null;
+
+function runWasmWorker(action, payload, fileName) {
+    return new Promise((resolve, reject) => {
+        if (!wasmWorker) return reject("Worker not initialized");
+        const id = Date.now().toString() + Math.random();
+        
+        const listener = (e) => {
+            if (e.data.id === id) {
+                wasmWorker.removeEventListener('message', listener);
+                if (e.data.success) {
+                    resolve(e.data.payload);
+                } else {
+                    reject(new Error(e.data.error));
+                }
+            }
+        };
+        
+        wasmWorker.addEventListener('message', listener);
+        
+        if (payload instanceof Uint8Array || payload instanceof ArrayBuffer) {
+            const buffer = payload instanceof Uint8Array ? payload.buffer : payload;
+            wasmWorker.postMessage({ id, action, payload: buffer, fileName }, [buffer]);
+        } else {
+            wasmWorker.postMessage({ id, action, payload, fileName });
+        }
+    });
+}
 
 // ==========================================
 // PARAPHRASE ENGINE (Transformers.js)
@@ -31,14 +59,14 @@ async function getParaphraser() {
     try {
       setStatus('Downloading AI model...', 'ready');
 
-      // Use Llama-3.2-1B-Instruct (1.2 Billion parameters) via ONNX
-      // This is a large model (~800MB - 1.5GB quantized) and will be slower on CPU
-      const pipe = await pipeline('text-generation', 'onnx-community/Llama-3.2-1B-Instruct', {
-        dtype: 'q8', // Fast on both WebGPU and WASM fallback
+      // Use Microsoft Phi-3-mini-4k-instruct (3.8 Billion parameters) via ONNX
+      // This is a massive model (~2.2GB quantized) requiring WebGPU and high RAM
+      const pipe = await pipeline('text-generation', 'onnx-community/Phi-3-mini-4k-instruct', {
+        dtype: 'q4f16', // Recommended for 3B+ models on WebGPU
         device: navigator.gpu ? 'webgpu' : 'wasm',
         progress_callback: (progress) => {
           if (progress.status === 'progress' && progress.progress) {
-            setStatus(`Downloading 1B Model: ${Math.round(progress.progress)}%`, 'ready');
+            setStatus(`Downloading 3.8B Model: ${Math.round(progress.progress)}%`, 'ready');
           } else if (progress.status === 'ready') {
             setStatus('AI model loaded', 'success');
           }
@@ -64,16 +92,19 @@ async function getParaphraser() {
 async function run() {
   try {
     // 1. Load WASM engine (always works, no GPU needed)
-    await init({ module_or_path: chrome.runtime.getURL('pkg/ghostmark_wasm_bg.wasm') });
+    wasmWorker = new Worker('wasm-worker.js', { type: 'module' });
     wasmLoaded = true;
     setStatus('Ready', 'success');
 
-    // 2. Load chat history
-    chrome.storage.local.get(['chatHistory'], (result) => {
+    // 2. Load chat history & settings
+    chrome.storage.local.get(['chatHistory', 'geminiApiKey'], (result) => {
       if (result.chatHistory) {
         document.getElementById('chatArea').innerHTML = result.chatHistory;
         const chatArea = document.getElementById('chatArea');
         chatArea.scrollTop = chatArea.scrollHeight;
+      }
+      if (result.geminiApiKey) {
+        document.getElementById('geminiApiKey').value = result.geminiApiKey;
       }
     });
   } catch (e) {
@@ -111,7 +142,7 @@ async function copyToClipboard(text) {
 // FILE PROCESSING
 // ==========================================
 
-async function processFile(file, wasmFunc, typeLabel) {
+async function processFile(file, typeLabel) {
   if (!wasmLoaded) return;
   
   // Update UI to show upload
@@ -124,8 +155,9 @@ async function processFile(file, wasmFunc, typeLabel) {
     const arrayBuffer = await file.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
     
-    // Call Rust WASM to strip metadata in-memory
-    const cleanedBytes = wasmFunc(uint8Array);
+    // Call Rust WASM to strip metadata via Web Worker
+    const cleanedBuffer = await runWasmWorker('strip_file', arrayBuffer, file.name);
+    const cleanedBytes = new Uint8Array(cleanedBuffer);
     
     const t1 = performance.now();
     const removedBytes = uint8Array.length - cleanedBytes.length;
@@ -175,22 +207,22 @@ async function handleFileUpload(file) {
   const ext = file.name.split('.').pop()?.toLowerCase();
   
   if (['png', 'jpeg', 'jpg', 'webp', 'bmp', 'gif'].includes(ext)) {
-    await processFile(file, strip_image_bytes_wasm, 'Image');
+    await processFile(file, 'Image');
   } else if (ext === 'pdf') {
-    await processFile(file, strip_pdf_metadata_wasm, 'PDF');
+    await processFile(file, 'PDF');
   } else if (ext === 'docx') {
-    await processFile(file, strip_docx_metadata_wasm, 'DOCX');
+    await processFile(file, 'DOCX');
   } else if (ext === 'epub') {
-    await processFile(file, strip_epub_metadata_wasm, 'EPUB');
+    await processFile(file, 'EPUB');
   } else if (ext === 'odt') {
-    await processFile(file, strip_odt_metadata_wasm, 'ODT');
+    await processFile(file, 'ODT');
   } else if (ext === 'svg') {
-    await processFile(file, strip_svg_metadata_wasm, 'SVG');
+    await processFile(file, 'SVG');
   } else if (['txt', 'md', 'json'].includes(ext)) {
       appendUserMessage(`📎 Uploaded Text: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
       try {
          const text = await file.text();
-         const cleaned = sanitize_text_wasm(text, false);
+         const cleaned = await runWasmWorker('sanitize_text', text);
          const encoder = new TextEncoder();
          const cleanedBytes = encoder.encode(cleaned);
          
@@ -262,8 +294,29 @@ dragOverlay.addEventListener('drop', (e) => {
 });
 
 // ==========================================
-// TEXT PROCESSING
+// TEXT PROCESSING & DETECTION
 // ==========================================
+
+async function checkSynthId(text) {
+  const apiKey = document.getElementById('geminiApiKey').value.trim();
+  if (!apiKey) return "";
+  
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text }] }],
+        generationConfig: { taskType: 'DETECT_TEXT_WATERMARK' }
+      })
+    });
+    if (!res.ok) return "API Error";
+    const data = await res.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || "Unknown";
+  } catch (err) {
+    return "Network Error";
+  }
+}
 
 function appendUserMessage(text) {
   const chatArea = document.getElementById('chatArea');
@@ -298,6 +351,7 @@ document.getElementById('scrubBtn').addEventListener('click', async () => {
 
   const aggressive = document.getElementById('aggressiveScrub').checked;
   const grammar = document.getElementById('grammarScrub').checked;
+  const useGemini = document.getElementById('geminiMode').checked;
 
   // 1. Show user message
   appendUserMessage(input);
@@ -307,12 +361,18 @@ document.getElementById('scrubBtn').addEventListener('click', async () => {
   inputEl.style.height = '22px';
 
   try {
+    let scoreBefore = "";
+    if (useGemini) {
+       setStatus('Checking original SynthID...', 'ready');
+       scoreBefore = await checkSynthId(input);
+    }
+
     const originalLen = input.length;
     const t0 = performance.now();
     
     if (aggressive || grammar) {
       // 1. First, run the fast WASM normalization and Unicode scrub
-      const wasmCleaned = sanitize_text_wasm(input, false);
+      const wasmCleaned = await runWasmWorker('sanitize_text', input);
       
       const llmT0 = performance.now();
       
@@ -402,13 +462,25 @@ document.getElementById('scrubBtn').addEventListener('click', async () => {
           rewrittenParts.push(reply.trim());
         }
 
-        // 2. Run the algorithmic Homoglyph Perturbation on the generated text
-        const finalCleaned = grammar ? rewrittenParts.join(' ') : applyHomoglyphs(rewrittenParts.join(' '));
+        // 2. Run the algorithmic Homoglyph Perturbation on the generated text via WASM
+        const joinedText = rewrittenParts.join(' ');
+        const finalCleaned = grammar ? joinedText : await runWasmWorker('sanitize_text_homoglyph', joinedText);
         const llmT1 = performance.now();
+        
+        let scoreAfter = "";
+        if (useGemini) {
+           setStatus('Checking final SynthID...', 'ready');
+           scoreAfter = await checkSynthId(finalCleaned);
+        }
         
         await copyToClipboard(finalCleaned);
         
         const title = grammar ? 'Grammar Corrected' : 'Statistical Watermark Destroyed';
+        
+        let resultOutput = escapeHtml(finalCleaned);
+        if (useGemini) {
+           resultOutput = `<div style="font-size:12px;color:var(--info);margin-bottom:8px;background:var(--bg-raised);padding:6px;border-radius:4px;"><b>SynthID Before:</b> ${scoreBefore}<br/><b>SynthID After:</b> ${scoreAfter}</div>${resultOutput}`;
+        }
         
         const responseHtml = `
           <div class="result-avatar">
@@ -419,7 +491,7 @@ document.getElementById('scrubBtn').addEventListener('click', async () => {
             </svg>
           </div>
           <div class="result-content">
-            <div class="result-output">${escapeHtml(finalCleaned)}</div>
+            <div class="result-output">${resultOutput}</div>
             <div class="result-meta">
               <div class="status-dot success"></div>
               <span>${title} (${((llmT1 - llmT0) / 1000).toFixed(1)}s) - Copied!</span>
@@ -438,11 +510,22 @@ document.getElementById('scrubBtn').addEventListener('click', async () => {
       
     } else {
       // Regular WASM fast scrub (Layer A)
-      const cleaned = sanitize_text_wasm(input, false);
+      const cleaned = await runWasmWorker('sanitize_text', input);
       const t1 = performance.now();
       const removed = originalLen - cleaned.length;
       
+      let scoreAfter = "";
+      if (useGemini) {
+         setStatus('Checking final SynthID...', 'ready');
+         scoreAfter = await checkSynthId(cleaned);
+      }
+      
       await copyToClipboard(cleaned);
+      
+      let resultOutput = `Cleaned ${removed > 0 ? removed : 0} hidden characters.`;
+      if (useGemini) {
+         resultOutput = `<div style="font-size:12px;color:var(--info);margin-bottom:8px;background:var(--bg-raised);padding:6px;border-radius:4px;"><b>SynthID Before:</b> ${scoreBefore}<br/><b>SynthID After:</b> ${scoreAfter}</div>${resultOutput}`;
+      }
       
       const responseHtml = `
         <div class="result-avatar">
@@ -453,7 +536,7 @@ document.getElementById('scrubBtn').addEventListener('click', async () => {
           </svg>
         </div>
         <div class="result-content">
-          <div class="result-output">Cleaned ${removed > 0 ? removed : 0} hidden characters.</div>
+          <div class="result-output">${resultOutput}</div>
           <div class="result-meta">
             <div class="status-dot success"></div>
             <span>Fast WASM Scrub (${(t1 - t0).toFixed(2)}ms) - Copied!</span>
@@ -487,42 +570,7 @@ function setStatus(msg, state) {
   statusBox.className = `status state-${state}`;
 }
 
-// Complex Mathematical Algorithm for Text Perturbation (Defeats Tokenizers)
-function applyHomoglyphs(text) {
-  const glyphs = {
-    'a': 'а', // U+0430
-    'c': 'с', // U+0441
-    'e': 'е', // U+0435
-    'o': 'о', // U+043E
-    'p': 'р', // U+0440
-    'x': 'х', // U+0445
-    'y': 'у', // U+0443
-    'A': 'А', // U+0410
-    'C': 'С', // U+0421
-    'E': 'Е', // U+0415
-    'O': 'О', // U+041E
-    'P': 'Р', // U+0420
-    'X': 'Х', // U+0425
-  };
-
-  let result = '';
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    // 15% chance to swap with a Cyrillic homoglyph
-    if (glyphs[char] && Math.random() < 0.15) {
-      result += glyphs[char];
-    } else {
-      result += char;
-    }
-    
-    // 5% chance to inject an invisible zero-width non-joiner 
-    // (but not at spaces to avoid word boundary issues)
-    if (char !== ' ' && Math.random() < 0.05) {
-      result += '\u200C'; 
-    }
-  }
-  return result;
-}
+// (JS Homoglyph function removed in favor of WASM)
 
 function escapeHtml(unsafe) {
     return unsafe
@@ -546,6 +594,16 @@ document.getElementById('grammarScrub').addEventListener('change', (e) => {
 // Ollama Settings Toggle
 document.getElementById('ollamaMode').addEventListener('change', (e) => {
   document.getElementById('ollamaSettings').style.display = e.target.checked ? 'flex' : 'none';
+});
+
+// Gemini Settings Toggle
+document.getElementById('geminiMode').addEventListener('change', (e) => {
+  document.getElementById('geminiSettings').style.display = e.target.checked ? 'flex' : 'none';
+});
+
+// Save API key on change
+document.getElementById('geminiApiKey').addEventListener('change', (e) => {
+  chrome.storage.local.set({ geminiApiKey: e.target.value.trim() });
 });
 
 // Auto-resize textarea like ChatGPT
