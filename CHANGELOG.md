@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.11.0] - 2026-08-18
+### Added
+- **WASM Web Worker Multithreading**: Migrated the WASM processing engine in both the Web Playground and Chrome Extension to run inside a dedicated Web Worker. This ensures the UI remains fully responsive with zero-blocking when scrubbing massive files (e.g., 500-page EPUBs or heavy PDFs) using zero-copy `ArrayBuffer` transfers.
+- **Gemini SynthID Detection**: Added native integration with the Google Gemini API (`taskType: DETECT_TEXT_WATERMARK`) to both the Playground and Extension. Users can now input their own API key to mathematically score and verify if a SynthID watermark is present in their text before and after scrubbing.
+
+### Changed
+- **WebGPU Engine**: Upgraded the in-browser WebGPU text rewriting model from `Llama-3.2-1B-Instruct` (1.2B) to Microsoft's `Phi-3-mini-4k-instruct` (3.8B) for significantly smarter offline paraphrasing on desktop devices.
+
 ## [0.10.0] - 2026-08-18
 ### Added
 - **Sidebar Chat History**: Added a ChatGPT-style sidebar to the web playground for multi-chat session management. Sessions are persisted instantly to local storage.

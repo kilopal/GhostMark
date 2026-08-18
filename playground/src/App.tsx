@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowUp, Paperclip, Download, FileCode, Globe, Terminal, AlertCircle, X, ChevronDown, CheckCircle2, Code2, Trash2, Menu, Bot } from 'lucide-react';
-import initWasm, { sanitize_text_wasm, strip_image_bytes_wasm, strip_pdf_metadata_wasm, strip_docx_metadata_wasm, strip_epub_metadata_wasm, strip_odt_metadata_wasm, strip_svg_metadata_wasm } from './pkg/ghostmark_wasm.js';
-import wasmUrl from './pkg/ghostmark_wasm_bg.wasm?url';
 import { pipeline, env } from '@huggingface/transformers';
 
 type Message = {
@@ -99,7 +97,7 @@ export default function App() {
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingTime, setProcessingTime] = useState(0);
-  const [wasmEngine, setWasmEngine] = useState<any>(null);
+  const [wasmWorker, setWasmWorker] = useState<Worker | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // Settings State
@@ -107,6 +105,7 @@ export default function App() {
   const [useHomoglyphs, setUseHomoglyphs] = useState(true);
   const [llmMode, setLlmMode] = useState<'none' | 'groq' | 'ollama' | 'webgpu'>('none');
   const [groqKey, setGroqKey] = useState('');
+  const [geminiKey, setGeminiKey] = useState('');
   const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11434');
   const [ollamaModel, setOllamaModel] = useState('llama3');
 
@@ -148,18 +147,40 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isProcessing]);
 
-  // Load WASM on mount
+  // Initialize Web Worker on mount
   useEffect(() => {
-    async function loadWasm() {
-      try {
-        await initWasm(wasmUrl);
-        setWasmEngine(() => sanitize_text_wasm);
-      } catch (err) {
-        console.error("Failed to load WASM:", err);
-      }
-    }
-    loadWasm();
+    const worker = new Worker(new URL('./wasm-worker.ts', import.meta.url), { type: 'module' });
+    setWasmWorker(worker);
+    return () => worker.terminate();
   }, []);
+
+  const runWasmWorker = (action: string, payload: any, fileName?: string): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      if (!wasmWorker) return reject("Worker not initialized");
+      const id = Date.now().toString() + Math.random();
+      
+      const listener = (e: MessageEvent) => {
+        if (e.data.id === id) {
+          wasmWorker.removeEventListener('message', listener);
+          if (e.data.success) {
+            resolve(e.data.payload);
+          } else {
+            reject(new Error(e.data.error));
+          }
+        }
+      };
+      
+      wasmWorker.addEventListener('message', listener);
+      
+      if (payload instanceof Uint8Array || payload instanceof ArrayBuffer) {
+        // Zero-copy transfer
+        const buffer = payload instanceof Uint8Array ? payload.buffer : payload;
+        wasmWorker.postMessage({ id, action, payload: buffer, fileName }, [buffer]);
+      } else {
+        wasmWorker.postMessage({ id, action, payload, fileName });
+      }
+    });
+  };
 
   const getParaphraser = async () => {
     if (hfPipeline) return hfPipeline;
@@ -167,8 +188,8 @@ export default function App() {
     env.backends.onnx.wasm!.numThreads = 1;
     env.backends.onnx.wasm!.proxy = false;
 
-    const pipe = await pipeline('text-generation', 'onnx-community/Llama-3.2-1B-Instruct', {
-      dtype: 'q8',
+    const pipe = await pipeline('text-generation', 'onnx-community/Phi-3-mini-4k-instruct', {
+      dtype: 'q4f16',
       device: (navigator as any).gpu ? 'webgpu' : 'wasm',
       progress_callback: (progress: any) => {
         if (progress.status === 'progress' && progress.progress) {
@@ -178,6 +199,25 @@ export default function App() {
     });
     setHfPipeline(() => pipe);
     return pipe;
+  };
+
+  const checkSynthId = async (text: string): Promise<string> => {
+    if (!geminiKey) return "";
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text }] }],
+          generationConfig: { taskType: 'DETECT_TEXT_WATERMARK' }
+        })
+      });
+      if (!res.ok) return "API Error";
+      const data = await res.json();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text || "Unknown";
+    } catch (err) {
+      return "Network Error";
+    }
   };
 
   const handleProcessText = async () => {
@@ -193,9 +233,15 @@ export default function App() {
     try {
       let currentText = textToProcess;
       
+      let scoreBefore = "";
+      if (geminiKey) {
+         updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: 'Checking for SynthID watermark...' }]);
+         scoreBefore = await checkSynthId(textToProcess);
+      }
+      
       // 1. Pre-processing
-      if (wasmEngine) {
-        currentText = wasmEngine(textToProcess, useHomoglyphs && llmMode === 'none');
+      if (wasmWorker) {
+        currentText = await runWasmWorker('sanitize_text', textToProcess);
       }
 
       // 2. LLM Engine
@@ -275,11 +321,21 @@ export default function App() {
       }
 
       // 3. Post-processing
-      if (useHomoglyphs && llmMode !== 'none' && wasmEngine) {
-         currentText = wasmEngine(currentText, true);
+      if (useHomoglyphs && wasmWorker) {
+         currentText = await runWasmWorker('sanitize_text_homoglyph', currentText);
       }
 
-      updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: currentText }]);
+      let scoreAfter = "";
+      if (geminiKey) {
+         scoreAfter = await checkSynthId(currentText);
+      }
+
+      let finalMsg = currentText;
+      if (geminiKey) {
+         finalMsg = `[SynthID Analysis]\nBefore Scrubbing: ${scoreBefore}\nAfter Scrubbing: ${scoreAfter}\n\n[Cleaned Text]\n${currentText}`;
+      }
+
+      updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: finalMsg }]);
     } catch (err: any) {
       updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: `Error: ${err.message}` }]);
     } finally {
@@ -287,16 +343,18 @@ export default function App() {
     }
   };
 
-  const processFile = async (file: File, wasmFunc: any) => {
-    if (!wasmEngine) return;
+  const processFile = async (file: File) => {
+    if (!wasmWorker) return;
     updateMessages((prev: Message[]) => [...prev, { role: 'user', content: `Attached File: ${file.name}` }]);
     setIsProcessing(true);
     
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-      const cleanedBytes = wasmFunc(uint8Array);
-      const removedBytes = uint8Array.length - cleanedBytes.length;
+      const originalLength = arrayBuffer.byteLength;
+      
+      const cleanedBuffer = await runWasmWorker('strip_file', arrayBuffer, file.name);
+      const cleanedBytes = new Uint8Array(cleanedBuffer);
+      const removedBytes = originalLength - cleanedBytes.length;
       
       updateMessages((prev: Message[]) => [...prev, { 
         role: 'assistant', 
@@ -317,25 +375,15 @@ export default function App() {
     if (!file) return;
     const ext = file.name.split('.').pop()?.toLowerCase();
     
-    if (['png', 'jpeg', 'jpg', 'webp', 'bmp', 'gif'].includes(ext || '')) {
-      await processFile(file, strip_image_bytes_wasm);
-    } else if (ext === 'pdf') {
-      await processFile(file, strip_pdf_metadata_wasm);
-    } else if (ext === 'docx') {
-      await processFile(file, strip_docx_metadata_wasm);
-    } else if (ext === 'epub') {
-      await processFile(file, strip_epub_metadata_wasm);
-    } else if (ext === 'odt') {
-      await processFile(file, strip_odt_metadata_wasm);
-    } else if (ext === 'svg') {
-      await processFile(file, strip_svg_metadata_wasm);
+    if (['png', 'jpeg', 'jpg', 'webp', 'bmp', 'gif', 'pdf', 'docx', 'epub', 'odt', 'svg'].includes(ext || '')) {
+      await processFile(file);
     } else if (['txt', 'md', 'json'].includes(ext || '')) {
       // For text files, read as string, run WASM, then download as Blob
       updateMessages((prev: Message[]) => [...prev, { role: 'user', content: `Attached File: ${file.name}` }]);
       try {
          setIsProcessing(true);
          const text = await file.text();
-         const cleaned = sanitize_text_wasm(text, false);
+         const cleaned = await runWasmWorker('sanitize_text', text);
          const encoder = new TextEncoder();
          const cleanedBytes = encoder.encode(cleaned);
          
@@ -384,7 +432,7 @@ export default function App() {
       case 'none': return 'WASM Only';
       case 'groq': return 'BYOK (Groq)';
       case 'ollama': return 'Local Ollama';
-      case 'webgpu': return 'Local WebGPU 1B';
+      case 'webgpu': return 'Local WebGPU 3.8B';
     }
   };
 
@@ -517,12 +565,18 @@ export default function App() {
                       <button className={`engine-btn ${llmMode === 'ollama' ? 'active' : ''}`} onClick={() => setLlmMode('ollama')}>Ollama (10B)</button>
                       <button className={`engine-btn ${llmMode === 'webgpu' ? 'active' : ''}`} onClick={() => {
                         if (window.innerWidth < 768 || /Mobi|Android/i.test(navigator.userAgent)) {
-                          alert("WebGPU 1B models require 2GB+ of free RAM and may crash mobile browsers. Please use a desktop device or another engine.");
+                          alert("WebGPU 3.8B models require 4GB+ of free RAM and will crash mobile browsers. Please use a desktop device or another engine.");
                         } else {
                           setLlmMode('webgpu');
                         }
-                      }}>WebGPU (1B)</button>
+                      }}>WebGPU (3.8B)</button>
                     </div>
+                  </div>
+
+                  <div className="setting-group animate-fade-in" style={{ borderTop: '1px solid var(--border-light)', paddingTop: '15px' }}>
+                    <label className="select-label">SynthID Watermark Detection (Gemini API)</label>
+                    <input type="password" value={geminiKey} onChange={(e) => setGeminiKey(e.target.value)} placeholder="AIza..." className="modern-input" />
+                    <p className="setting-desc" style={{marginTop: '4px'}}>If set, GhostMark will query Google to verify SynthID removal.</p>
                   </div>
 
                   {llmMode === 'groq' && (
@@ -543,7 +597,7 @@ export default function App() {
                   {llmMode === 'webgpu' && (
                     <div className="warning-box animate-fade-in">
                       <AlertCircle size={18} color="var(--text-primary)" style={{ flexShrink: 0 }} />
-                      <p><strong>Heads up:</strong> WebGPU will download a ~1GB Llama model into your browser cache on first run. Requires a modern GPU.</p>
+                      <p><strong>Heads up:</strong> WebGPU will download a ~2.2GB Phi-3 model into your browser cache on first run. Requires a modern GPU.</p>
                     </div>
                   )}
                   
@@ -669,10 +723,10 @@ export default function App() {
               }}
               placeholder="Message GhostMark..."
               rows={1}
-              disabled={isProcessing || !wasmEngine}
+              disabled={isProcessing || !wasmWorker}
             />
 
-            <button className="submit-btn" onClick={handleProcessText} disabled={!inputText.trim() || isProcessing || !wasmEngine}>
+            <button className="submit-btn" onClick={handleProcessText} disabled={!inputText.trim() || isProcessing || !wasmWorker}>
               <ArrowUp size={20} strokeWidth={2.5} />
             </button>
           </div>
