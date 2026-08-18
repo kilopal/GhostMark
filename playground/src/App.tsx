@@ -32,6 +32,7 @@ export default function App() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(() => {
     return localStorage.getItem('ghostmark-active-session');
   });
+  const activeSessionIdRef = useRef<string | null>(activeSessionId);
 
   useEffect(() => {
     const savable = sessions.map(s => ({
@@ -52,12 +53,13 @@ export default function App() {
 
   const updateMessages = (updater: any) => {
     setSessions(prev => {
-      let currentId = activeSessionId;
+      let currentId = activeSessionIdRef.current;
       let currentSession = prev.find(s => s.id === currentId);
       
       if (!currentSession) {
-         currentId = Date.now().toString();
+         currentId = Date.now().toString() + Math.random().toString().slice(2, 6);
          currentSession = { id: currentId, title: 'New Chat', messages: [], updatedAt: Date.now() };
+         activeSessionIdRef.current = currentId;
       }
 
       const updatedMessages = typeof updater === 'function' ? updater(currentSession.messages) : updater;
@@ -70,17 +72,11 @@ export default function App() {
       const newSession = { ...currentSession, messages: updatedMessages, title: newTitle, updatedAt: Date.now() };
       
       if (!prev.find(s => s.id === currentId)) {
+          setTimeout(() => setActiveSessionId(currentId), 0);
           return [newSession, ...prev];
       }
       
       return prev.map(s => s.id === currentId ? newSession : s).sort((a, b) => b.updatedAt - a.updatedAt);
-    });
-    
-    setSessions(s => {
-       if (s.length > 0 && !activeSessionId) {
-           setTimeout(() => setActiveSessionId(s[0].id), 0);
-       }
-       return s;
     });
   };
 
