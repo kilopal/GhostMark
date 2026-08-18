@@ -5,7 +5,10 @@ use std::fs;
 
 /// Safely strips out cryptographic C2PA signatures and other tracking metadata
 /// from JPEG and PNG images without modifying the underlying pixel data.
-pub fn strip_image_metadata(input_path: &str, output_path: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub fn strip_image_metadata(
+    input_path: &str,
+    output_path: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     let input_bytes = fs::read(input_path)?;
     let cleaned = strip_image_bytes(&input_bytes)?;
     fs::write(output_path, cleaned)?;
@@ -44,7 +47,11 @@ pub fn strip_image_bytes(raw: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Erro
         // We strictly allowlist ONLY the critical rendering chunks.
         chunks.retain(|chunk| {
             let kind = chunk.kind();
-            kind == *b"IHDR" || kind == *b"PLTE" || kind == *b"IDAT" || kind == *b"IEND" || kind == *b"tRNS"
+            kind == *b"IHDR"
+                || kind == *b"PLTE"
+                || kind == *b"IDAT"
+                || kind == *b"IEND"
+                || kind == *b"tRNS"
         });
 
         let mut out = Vec::new();
@@ -234,8 +241,8 @@ mod tests {
         // Minimal GIF89a: header(6) + LSD(7) + trailer(1) = 14 bytes
         let mut gif = vec![
             b'G', b'I', b'F', b'8', b'9', b'a', // signature
-            1, 0, 1, 0, 0, 0, 0,                 // LSD: 1x1, no GCT
-            0x3B,                                  // trailer
+            1, 0, 1, 0, 0, 0, 0,    // LSD: 1x1, no GCT
+            0x3B, // trailer
         ];
 
         // Append trailing junk
@@ -246,4 +253,3 @@ mod tests {
         assert_eq!(cleaned.last(), Some(&0x3B));
     }
 }
-

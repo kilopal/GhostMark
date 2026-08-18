@@ -1,7 +1,7 @@
-use wasm_bindgen::prelude::*;
-use ghostmark_core::text_scrubber;
-use ghostmark_core::image_stripper;
 use ghostmark_core::document_stripper;
+use ghostmark_core::image_stripper;
+use ghostmark_core::text_scrubber;
+use wasm_bindgen::prelude::*;
 
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;

@@ -1,12 +1,12 @@
-use ghostmark_core::text_scrubber;
-use ghostmark_core::image_stripper;
 use ghostmark_core::document_stripper;
+use ghostmark_core::image_stripper;
+use ghostmark_core::text_scrubber;
 mod proxy;
 
 use clap::{Parser, Subcommand};
+use serde_json::json;
 use std::fs;
 use walkdir::WalkDir;
-use serde_json::json;
 
 #[derive(Parser)]
 #[command(author, version, about = "GhostMark: AI Watermark Stripper", long_about = None)]
@@ -80,7 +80,11 @@ async fn main() {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::CleanText { input, file, output } => {
+        Commands::CleanText {
+            input,
+            file,
+            output,
+        } => {
             let text = if *file {
                 fs::read_to_string(input).unwrap_or_else(|err| {
                     eprintln!("Error reading file '{}': {}", input, err);
@@ -101,38 +105,53 @@ async fn main() {
             } else {
                 println!("{}", clean);
             }
-        },
+        }
         Commands::CleanImage { input, output } => {
             match image_stripper::strip_image_metadata(input, output) {
-                Ok(_) => println!("✅ Successfully stripped all tracking metadata from {} -> {}", input, output),
+                Ok(_) => println!(
+                    "✅ Successfully stripped all tracking metadata from {} -> {}",
+                    input, output
+                ),
                 Err(e) => {
                     eprintln!("❌ Error stripping image metadata: {}", e);
                     std::process::exit(1);
                 }
             }
-        },
+        }
         Commands::Serve { host, port } => {
             proxy::start_server(host, *port).await;
-        },
+        }
         Commands::BatchClean { dir } => {
             println!("🔍 Scanning directory: {}", dir);
             let mut cleaned_files = 0;
-            
+
             for entry in WalkDir::new(dir).into_iter().filter_map(|e| e.ok()) {
                 let path = entry.path();
                 if path.is_file() {
-                    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
-                    
+                    let ext = path
+                        .extension()
+                        .and_then(|e| e.to_str())
+                        .unwrap_or("")
+                        .to_lowercase();
+
                     if ext == "txt" || ext == "md" || ext == "json" {
                         if let Ok(text) = fs::read_to_string(path) {
                             let clean = text_scrubber::sanitize_text(&text, false);
                             if text != clean {
-                                fs::write(path, clean).unwrap_or_else(|e| eprintln!("Failed to write {}: {}", path.display(), e));
+                                fs::write(path, clean).unwrap_or_else(|e| {
+                                    eprintln!("Failed to write {}: {}", path.display(), e)
+                                });
                                 println!("✅ Scrubbed text: {}", path.display());
                                 cleaned_files += 1;
                             }
                         }
-                    } else if ext == "png" || ext == "jpg" || ext == "jpeg" || ext == "webp" || ext == "bmp" || ext == "gif" {
+                    } else if ext == "png"
+                        || ext == "jpg"
+                        || ext == "jpeg"
+                        || ext == "webp"
+                        || ext == "bmp"
+                        || ext == "gif"
+                    {
                         // Pass same input and output path for in-place edit
                         let path_str = path.to_str().unwrap();
                         if image_stripper::strip_image_metadata(path_str, path_str).is_ok() {
@@ -142,7 +161,9 @@ async fn main() {
                     } else if ext == "pdf" {
                         if let Ok(bytes) = fs::read(path) {
                             if let Ok(clean) = document_stripper::strip_pdf_metadata(&bytes) {
-                                fs::write(path, clean).unwrap_or_else(|e| eprintln!("Failed to write {}: {}", path.display(), e));
+                                fs::write(path, clean).unwrap_or_else(|e| {
+                                    eprintln!("Failed to write {}: {}", path.display(), e)
+                                });
                                 println!("✅ Stripped PDF metadata: {}", path.display());
                                 cleaned_files += 1;
                             }
@@ -150,7 +171,9 @@ async fn main() {
                     } else if ext == "docx" {
                         if let Ok(bytes) = fs::read(path) {
                             if let Ok(clean) = document_stripper::strip_docx_metadata(&bytes) {
-                                fs::write(path, clean).unwrap_or_else(|e| eprintln!("Failed to write {}: {}", path.display(), e));
+                                fs::write(path, clean).unwrap_or_else(|e| {
+                                    eprintln!("Failed to write {}: {}", path.display(), e)
+                                });
                                 println!("✅ Stripped DOCX metadata: {}", path.display());
                                 cleaned_files += 1;
                             }
@@ -158,7 +181,9 @@ async fn main() {
                     } else if ext == "svg" {
                         if let Ok(bytes) = fs::read(path) {
                             if let Ok(clean) = document_stripper::strip_svg_metadata(&bytes) {
-                                fs::write(path, clean).unwrap_or_else(|e| eprintln!("Failed to write {}: {}", path.display(), e));
+                                fs::write(path, clean).unwrap_or_else(|e| {
+                                    eprintln!("Failed to write {}: {}", path.display(), e)
+                                });
                                 println!("✅ Stripped SVG metadata: {}", path.display());
                                 cleaned_files += 1;
                             }
@@ -166,7 +191,9 @@ async fn main() {
                     } else if ext == "epub" {
                         if let Ok(bytes) = fs::read(path) {
                             if let Ok(clean) = document_stripper::strip_epub_metadata(&bytes) {
-                                fs::write(path, clean).unwrap_or_else(|e| eprintln!("Failed to write {}: {}", path.display(), e));
+                                fs::write(path, clean).unwrap_or_else(|e| {
+                                    eprintln!("Failed to write {}: {}", path.display(), e)
+                                });
                                 println!("✅ Stripped EPUB metadata: {}", path.display());
                                 cleaned_files += 1;
                             }
@@ -174,7 +201,9 @@ async fn main() {
                     } else if ext == "odt" {
                         if let Ok(bytes) = fs::read(path) {
                             if let Ok(clean) = document_stripper::strip_odt_metadata(&bytes) {
-                                fs::write(path, clean).unwrap_or_else(|e| eprintln!("Failed to write {}: {}", path.display(), e));
+                                fs::write(path, clean).unwrap_or_else(|e| {
+                                    eprintln!("Failed to write {}: {}", path.display(), e)
+                                });
                                 println!("✅ Stripped ODT metadata: {}", path.display());
                                 cleaned_files += 1;
                             }
@@ -183,8 +212,13 @@ async fn main() {
                 }
             }
             println!("🎉 Batch complete! Scrubbed {} files.", cleaned_files);
-        },
-        Commands::Ollama { input, file, model, output } => {
+        }
+        Commands::Ollama {
+            input,
+            file,
+            model,
+            output,
+        } => {
             let text = if *file {
                 fs::read_to_string(input).unwrap_or_else(|err| {
                     eprintln!("Error reading file '{}': {}", input, err);
@@ -195,10 +229,13 @@ async fn main() {
             };
 
             let clean_base = text_scrubber::sanitize_text(&text, false);
-            
-            println!("🤖 Sending to Ollama server ({}) for deep rewriting...", model);
+
+            println!(
+                "🤖 Sending to Ollama server ({}) for deep rewriting...",
+                model
+            );
             let client = reqwest::Client::new();
-            
+
             let req_body = json!({
                 "model": model,
                 "system": "You are an expert editor. Rewrite the user's text to sound conversational and human. You MUST preserve the exact same meaning, names, genders, and pronouns (he/she/they) as the original. Output only the rewritten text.",
@@ -206,12 +243,17 @@ async fn main() {
                 "stream": false
             });
 
-            match client.post("http://localhost:11434/api/generate").json(&req_body).send().await {
+            match client
+                .post("http://localhost:11434/api/generate")
+                .json(&req_body)
+                .send()
+                .await
+            {
                 Ok(resp) => {
                     if let Ok(json_resp) = resp.json::<serde_json::Value>().await {
                         if let Some(response_str) = json_resp["response"].as_str() {
                             let final_text = text_scrubber::apply_homoglyphs(response_str);
-                            
+
                             if let Some(out_path) = output {
                                 fs::write(out_path, &final_text).unwrap_or_else(|err| {
                                     eprintln!("Error writing file '{}': {}", out_path, err);
@@ -227,7 +269,7 @@ async fn main() {
                     } else {
                         eprintln!("❌ Failed to parse response from Ollama.");
                     }
-                },
+                }
                 Err(e) => {
                     eprintln!("❌ Failed to reach Ollama server: {}", e);
                     std::process::exit(1);

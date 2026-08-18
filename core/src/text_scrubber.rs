@@ -1,7 +1,7 @@
 /// Strips known invisible Unicode characters used for steganographic watermarking.
 pub fn sanitize_text(input: &str, aggressive: bool) -> String {
     let mut cleaned = String::with_capacity(input.len());
-    
+
     for c in input.chars() {
         match c {
             '\u{200B}'..='\u{200F}' => continue,
@@ -10,7 +10,7 @@ pub fn sanitize_text(input: &str, aggressive: bool) -> String {
             _ => cleaned.push(c),
         }
     }
-    
+
     if aggressive {
         humanize_text(&cleaned)
     } else {
@@ -25,9 +25,15 @@ pub fn sanitize_text(input: &str, aggressive: bool) -> String {
 // ============================================================
 
 /// A simple LCG for WASM-safe random numbers.
-struct Rng { state: u32 }
+struct Rng {
+    state: u32,
+}
 impl Rng {
-    fn new(seed: u32) -> Self { Rng { state: seed.wrapping_add(1) } }
+    fn new(seed: u32) -> Self {
+        Rng {
+            state: seed.wrapping_add(1),
+        }
+    }
     fn next(&mut self) -> u32 {
         self.state = self.state.wrapping_mul(1664525).wrapping_add(1013904223);
         self.state
@@ -45,26 +51,26 @@ impl Rng {
 fn humanize_text(input: &str) -> String {
     let paragraphs: Vec<&str> = input.split("\n\n").collect();
     let mut processed = Vec::new();
-    
+
     for p in paragraphs {
         if p.trim().is_empty() {
             processed.push(p.to_string());
             continue;
         }
-        
+
         let seed = p.len() as u32 ^ 0xDEAD;
         let mut rng = Rng::new(seed);
-        
+
         let mut text = pass_synonyms(p, &mut rng);
         text = pass_transitions(&text);
         text = pass_contractions(&text);
         text = pass_burstiness(&text, &mut rng);
         text = pass_fillers(&text, &mut rng);
         text = pass_strip_ai_padding(&text);
-        
+
         processed.push(text);
     }
-    
+
     processed.join("\n\n")
 }
 
@@ -93,14 +99,20 @@ fn pass_synonyms(input: &str, rng: &mut Rng) -> String {
 
 fn swap_word(word: &str, rng: &mut Rng) -> String {
     let lower = word.to_lowercase();
-    let is_cap = word.chars().next().map(|c| c.is_uppercase()).unwrap_or(false);
+    let is_cap = word
+        .chars()
+        .next()
+        .map(|c| c.is_uppercase())
+        .unwrap_or(false);
 
     let synonyms: &[&str] = match lower.as_str() {
         // ---- AI's favorite verbs ----
         "delve" | "delves" | "delving" => &["dig", "look", "explore", "get"],
         "utilize" | "utilizes" | "utilizing" => &["use", "work with", "rely on"],
         "leverage" | "leverages" | "leveraging" => &["use", "tap into", "rely on"],
-        "navigate" | "navigates" | "navigating" => &["handle", "deal with", "work through", "tackle"],
+        "navigate" | "navigates" | "navigating" => {
+            &["handle", "deal with", "work through", "tackle"]
+        }
         "foster" | "fosters" | "fostering" => &["build", "grow", "encourage", "support"],
         "empower" | "empowers" | "empowering" => &["help", "let", "give power to", "enable"],
         "streamline" | "streamlines" | "streamlining" => &["simplify", "speed up", "cut down on"],
@@ -117,7 +129,7 @@ fn swap_word(word: &str, rng: &mut Rng) -> String {
         "prioritize" | "prioritizes" => &["focus on", "put first", "rank"],
         "integrate" | "integrates" | "integrating" => &["combine", "blend", "mix", "merge"],
         "catalyze" | "catalyzes" => &["trigger", "spark", "kick off"],
-        
+
         // ---- AI's favorite adjectives ----
         "crucial" => &["key", "big", "major", "important"],
         "pivotal" => &["key", "central", "major"],
@@ -203,12 +215,12 @@ fn swap_word(word: &str, rng: &mut Rng) -> String {
         "forward-thinking" => &["progressive", "ahead of the curve"],
         "well-established" => &["proven", "solid", "long-standing"],
         "ever-evolving" => &["always changing", "constantly shifting"],
-        
+
         _ => return word.to_string(),
     };
 
     let chosen = rng.pick(synonyms);
-    
+
     if is_cap {
         let mut chars = chosen.chars();
         match chars.next() {
@@ -224,13 +236,22 @@ fn swap_word(word: &str, rng: &mut Rng) -> String {
 
 fn pass_transitions(input: &str) -> String {
     let mut text = input.to_string();
-    
+
     let replacements: &[(&str, &str)] = &[
         // Formal → Casual transitions
-        ("In today's rapidly evolving", "These days, in a fast-moving"),
-        ("In today's quickly evolving", "In a world that moves quickly"),
+        (
+            "In today's rapidly evolving",
+            "These days, in a fast-moving",
+        ),
+        (
+            "In today's quickly evolving",
+            "In a world that moves quickly",
+        ),
         ("In today's fast-paced", "In a world that moves fast"),
-        ("it becomes increasingly evident that", "it's pretty clear that"),
+        (
+            "it becomes increasingly evident that",
+            "it's pretty clear that",
+        ),
         ("it becomes evident that", "you can see that"),
         ("it is important to note that", "it's worth noting"),
         ("it is worth noting that", "one thing to keep in mind is"),
@@ -257,12 +278,17 @@ fn pass_transitions(input: &str) -> String {
         ("across numerous", "across many"),
         ("across various", "in different"),
     ];
-    
+
     for (from, to) in replacements {
         // Case-insensitive replacement
         if let Some(pos) = text.to_lowercase().find(&from.to_lowercase()) {
             let end = pos + from.len();
-            let replacement = if text.as_bytes().get(pos).map(|b| b.is_ascii_uppercase()).unwrap_or(false) {
+            let replacement = if text
+                .as_bytes()
+                .get(pos)
+                .map(|b| b.is_ascii_uppercase())
+                .unwrap_or(false)
+            {
                 let mut chars = to.chars();
                 match chars.next() {
                     None => String::new(),
@@ -274,7 +300,7 @@ fn pass_transitions(input: &str) -> String {
             text = format!("{}{}{}", &text[..pos], replacement, &text[end..]);
         }
     }
-    
+
     text
 }
 
@@ -282,7 +308,7 @@ fn pass_transitions(input: &str) -> String {
 
 fn pass_contractions(input: &str) -> String {
     let mut text = input.to_string();
-    
+
     let contractions: &[(&str, &str)] = &[
         ("It is not", "It's not"),
         ("it is not", "it's not"),
@@ -338,11 +364,11 @@ fn pass_contractions(input: &str) -> String {
         ("What is", "What's"),
         ("Let us", "Let's"),
     ];
-    
+
     for (from, to) in contractions {
         text = text.replace(from, to);
     }
-    
+
     text
 }
 
@@ -353,34 +379,34 @@ fn pass_burstiness(input: &str, rng: &mut Rng) -> String {
     if sentences.len() < 3 {
         return input.to_string();
     }
-    
+
     let mut result = Vec::new();
-    
+
     for sentence in &sentences {
         let word_count = sentence.split_whitespace().count();
-        
+
         // If sentence is very long (>25 words), split it
         if word_count > 25 {
             let words: Vec<&str> = sentence.split_whitespace().collect();
             // Find a good split point (after a comma, or near the middle)
             let mut split_at = words.len() / 2;
-            
+
             // Try to find a comma near the middle to split at
-            for i in (words.len()/3)..((2*words.len())/3) {
+            for i in (words.len() / 3)..((2 * words.len()) / 3) {
                 if words[i].ends_with(',') {
                     split_at = i + 1;
                     break;
                 }
             }
-            
+
             let first_half: String = words[..split_at].join(" ");
             let second_half: String = words[split_at..].join(" ");
-            
+
             // Remove trailing comma from first half if present
             let first_half = first_half.trim_end_matches(',').to_string();
-            
+
             result.push(first_half);
-            
+
             // Capitalize second half
             let second_half = capitalize_first(&second_half);
             result.push(second_half);
@@ -388,15 +414,24 @@ fn pass_burstiness(input: &str, rng: &mut Rng) -> String {
             result.push(sentence.to_string());
         }
     }
-    
+
     // Randomly merge some short adjacent sentences with a dash or semicolon
     let mut final_result = Vec::new();
     let mut i = 0;
     while i < result.len() {
         let word_count = result[i].split_whitespace().count();
         if word_count < 10 && i + 1 < result.len() && rng.next_float() < 0.3 {
-            let connector = if rng.next_float() < 0.5 { " — " } else { "; " };
-            let merged = format!("{}{}{}", result[i], connector, lowercase_first(&result[i+1]));
+            let connector = if rng.next_float() < 0.5 {
+                " — "
+            } else {
+                "; "
+            };
+            let merged = format!(
+                "{}{}{}",
+                result[i],
+                connector,
+                lowercase_first(&result[i + 1])
+            );
             final_result.push(merged);
             i += 2;
         } else {
@@ -404,7 +439,7 @@ fn pass_burstiness(input: &str, rng: &mut Rng) -> String {
             i += 1;
         }
     }
-    
+
     final_result.join(". ")
 }
 
@@ -431,7 +466,7 @@ fn pass_fillers(input: &str, rng: &mut Rng) -> String {
     if sentences.len() < 3 {
         return input.to_string();
     }
-    
+
     let fillers = [
         "Honestly, ",
         "The thing is, ",
@@ -446,11 +481,11 @@ fn pass_fillers(input: &str, rng: &mut Rng) -> String {
         "Truth be told, ",
         "When you break it down, ",
     ];
-    
+
     let mut result: Vec<String> = Vec::new();
     let mut filler_count = 0;
     let max_fillers = if sentences.len() > 6 { 3 } else { 2 };
-    
+
     for (i, sentence) in sentences.iter().enumerate() {
         // Don't add filler to the first sentence, and limit total fillers
         if i > 0 && i % 2 == 0 && filler_count < max_fillers && rng.next_float() < 0.45 {
@@ -462,7 +497,7 @@ fn pass_fillers(input: &str, rng: &mut Rng) -> String {
             result.push(sentence.to_string());
         }
     }
-    
+
     result.join(". ")
 }
 
@@ -470,7 +505,7 @@ fn pass_fillers(input: &str, rng: &mut Rng) -> String {
 
 fn pass_strip_ai_padding(input: &str) -> String {
     let mut text = input.to_string();
-    
+
     let padding: &[(&str, &str)] = &[
         ("It is important to understand that ", ""),
         ("It is crucial to recognize that ", ""),
@@ -484,14 +519,17 @@ fn pass_strip_ai_padding(input: &str) -> String {
         ("To summarize, ", "Basically, "),
         ("In summary, ", "So basically, "),
         ("All in all, ", "Overall, "),
-        ("Taking everything into account, ", "All things considered, "),
+        (
+            "Taking everything into account, ",
+            "All things considered, ",
+        ),
         ("Given the above, ", "With all that, "),
     ];
-    
+
     for (from, to) in padding {
         text = text.replace(from, to);
     }
-    
+
     text
 }
 
@@ -503,7 +541,7 @@ pub fn apply_homoglyphs(input: &str) -> String {
     let mut result = String::with_capacity(input.len() + input.len() / 5);
     let seed = input.len() as u32 ^ 0xCAFE;
     let mut rng = Rng::new(seed);
-    
+
     for c in input.chars() {
         // 15% chance to swap with a Cyrillic homoglyph
         let replacement = if rng.next_float() < 0.15 {
@@ -527,13 +565,13 @@ pub fn apply_homoglyphs(input: &str) -> String {
             c
         };
         result.push(replacement);
-        
-        // 5% chance to inject an invisible zero-width non-joiner 
+
+        // 5% chance to inject an invisible zero-width non-joiner
         if c != ' ' && rng.next_float() < 0.05 {
             result.push('\u{200C}');
         }
     }
-    
+
     result
 }
 
@@ -562,7 +600,7 @@ mod tests {
         let expected = "SecretMessage";
         assert_eq!(sanitize_text(dirty, false), expected);
     }
-    
+
     #[test]
     fn test_humanizer_changes_text() {
         let ai_text = "In today's rapidly evolving and fast-paced digital landscape, the integration of artificial intelligence has become a crucial and transformative element across numerous industries.";

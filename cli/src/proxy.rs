@@ -11,8 +11,8 @@ use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::time::Instant;
 
-use ghostmark_core::text_scrubber;
 use ghostmark_core::image_stripper;
+use ghostmark_core::text_scrubber;
 
 // ─── Request / Response Models ───────────────────────────────────────────────
 
@@ -259,7 +259,5 @@ pub async fn start_server(host: &str, port: u16) {
         .await
         .expect("Failed to bind to address");
 
-    axum::serve(listener, app)
-        .await
-        .expect("Server crashed");
+    axum::serve(listener, app).await.expect("Server crashed");
 }
