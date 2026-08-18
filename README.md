@@ -29,10 +29,17 @@ Unlike CLI tools or Docker containers that are meant for servers, GhostMark runs
 - ✅ Runs 100% locally in your browser using WebGPU.
 - ✅ Defeats complex SynthID statistical watermarks.
 - ✅ Achieves **0% AI Detection** on Quillbot and other detectors using advanced mathematical text perturbation (Cyrillic homoglyphs and zero-width jitter).
+- ✅ **New:** Interactive Web Playground. Try the WASM engine instantly without installing anything!
 - ✅ **New:** Instant context-menu ingestion. Right-click any text on the web and select "Scrub with GhostMark".
 - ✅ **New:** Offline Grammar & Proofread mode.
 - ✅ **New:** Ollama Mode! Run massive 10B+ parameter models on your local GPU for instant AI inference.
 - ✅ Card-based dark mode UI with structured result cards.
+
+---
+
+## 🎮 Try it Live
+
+Check out the **[GhostMark Demo Playground](https://kilopal.github.io/GhostMark/playground/)** to see the local WASM engine strip watermarks from text instantly in your browser!
 
 ---
 

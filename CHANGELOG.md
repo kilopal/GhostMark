@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 - **Docker Docs**: Added `docs/docker.md` with deployment guide, configuration, and API examples.
 - **Agent Skills**: Added `skills/ghostmark-clean/` with `SKILL.md` and reference docs for Cursor, Windsurf, Cline, and other AI IDE integrations. Agents auto-discover and learn the GhostMark API.
 - **Cursor Integration**: Added `.cursorrules` and `.cursor/rules` for native Cursor IDE project context.
+- **Demo Playground Website**: Added a static web playground (`playground/`) for instant browser-based WASM watermarking removal testing.
 - **Agent Skills Docs**: Added `docs/agent-skills.md` with setup guide and supported IDEs.
 - **BMP Support**: New `strip_bmp_trailing_bytes()` in `image_stripper` — truncates BMP files to their declared file size, stripping any steganographic or tracking payloads appended after the header-declared boundary.
 - **GIF Support**: New `strip_gif_trailing_bytes()` in `image_stripper` — parses the GIF block structure and truncates at the `0x3B` trailer byte, removing any data appended after the valid GIF stream.
