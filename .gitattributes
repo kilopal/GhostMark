@@ -1,0 +1,5 @@
+# Ignore minified/vendored files in GitHub language statistics
+extension/transformers.min.js linguist-vendored
+
+# Ignore generated WASM glue code
+playground/src/pkg/* linguist-generated
