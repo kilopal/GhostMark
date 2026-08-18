@@ -190,7 +190,7 @@ export default function App() {
     env.backends.onnx.wasm!.proxy = false;
 
     const pipe = await pipeline('text-generation', 'Xenova/Phi-3-mini-4k-instruct', {
-      dtype: 'q4f16',
+      dtype: 'q4',
       device: (navigator as any).gpu ? 'webgpu' : 'wasm',
       progress_callback: (progress: any) => {
         if (progress.status === 'progress' && progress.progress) {
