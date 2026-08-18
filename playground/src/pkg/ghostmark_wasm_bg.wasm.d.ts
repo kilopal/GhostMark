@@ -2,6 +2,7 @@
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
 export const sanitize_text_wasm: (a: number, b: number, c: number) => [number, number];
+export const shatter_synthid_wasm: (a: number, b: number) => [number, number];
 export const strip_docx_metadata_wasm: (a: number, b: number) => [number, number, number, number];
 export const strip_epub_metadata_wasm: (a: number, b: number) => [number, number, number, number];
 export const strip_image_bytes_wasm: (a: number, b: number) => [number, number, number, number];

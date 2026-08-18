@@ -19,6 +19,8 @@ use ghostmark_core::text_scrubber;
 #[derive(Deserialize)]
 pub struct CleanTextRequest {
     pub text: String,
+    #[serde(default)]
+    pub shatter_synthid: bool,
 }
 
 #[derive(Serialize)]
@@ -134,7 +136,11 @@ async fn openapi() -> impl IntoResponse {
 async fn clean_text(Json(payload): Json<CleanTextRequest>) -> impl IntoResponse {
     let start = Instant::now();
     let original_len = payload.text.len();
-    let cleaned = text_scrubber::sanitize_text(&payload.text, false);
+    let cleaned = if payload.shatter_synthid {
+        text_scrubber::shatter_synthid_text(&payload.text)
+    } else {
+        text_scrubber::sanitize_text(&payload.text, false)
+    };
     let cleaned_len = cleaned.len();
     let elapsed = start.elapsed().as_micros();
 

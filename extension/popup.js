@@ -350,6 +350,7 @@ document.getElementById('scrubBtn').addEventListener('click', async () => {
   if (!input) return;
 
   const aggressive = document.getElementById('aggressiveScrub').checked;
+  const shatterSynthId = document.getElementById('shatterSynthId').checked;
   const grammar = document.getElementById('grammarScrub').checked;
   const useGemini = document.getElementById('geminiMode').checked;
 
@@ -509,8 +510,9 @@ document.getElementById('scrubBtn').addEventListener('click', async () => {
       return;
       
     } else {
-      // Regular WASM fast scrub (Layer A)
-      const cleaned = await runWasmWorker('sanitize_text', input);
+      // Regular WASM fast scrub (Layer A) or Shatter SynthID
+      const action = shatterSynthId ? 'shatter_synthid_text' : 'sanitize_text';
+      const cleaned = await runWasmWorker(action, input);
       const t1 = performance.now();
       const removed = originalLen - cleaned.length;
       

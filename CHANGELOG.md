@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.13.0] - 2026-08-18
+### Added
+- **SynthID-Text Destroyer**: Armed GhostMark to completely neutralize Claude's new SynthID-Text statistical watermark. Revived the Statistical Humanizer engine in the Rust core to aggressively perturb tokens via synonym swapping and phrasing changes, destroying the mathematical token sequence SynthID relies on.
+- **CLI Flags**: Added `--shatter-synthid` flag to `clean-text` and `batch-clean` commands.
+- **WASM Integration**: Exported `shatter_synthid_text` to WASM and updated Web Workers.
+- **UI Toggles**: Added "Shatter SynthID Watermark" toggles to the Web Playground and Chrome Extension.
+
 ## [0.12.1] - 2026-08-18
 ### Fixed
 - **SynthID Toggle UX**: The SynthID Detect toggle will no longer enable if the Gemini API key is missing (instead, just opening settings), preventing annoying "SynthID detection skipped" spam messages in the chat interface.

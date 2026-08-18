@@ -12,6 +12,11 @@ pub fn sanitize_text_wasm(input: &str, aggressive: bool) -> String {
 }
 
 #[wasm_bindgen]
+pub fn shatter_synthid_wasm(input: &str) -> String {
+    ghostmark_core::text_scrubber::shatter_synthid_text(input)
+}
+
+#[wasm_bindgen]
 pub fn strip_image_bytes_wasm(raw: &[u8]) -> Result<Vec<u8>, JsValue> {
     image_stripper::strip_image_bytes(raw).map_err(|e| JsValue::from_str(&e.to_string()))
 }

@@ -29,6 +29,7 @@ Unlike CLI tools or Docker containers that are meant for servers, GhostMark runs
 - ✅ Runs 100% locally in your browser using WebGPU.
 - ✅ Defeats complex SynthID statistical watermarks.
 - ✅ Achieves **0% AI Detection** on Quillbot and other detectors using advanced mathematical text perturbation (Cyrillic homoglyphs and zero-width jitter).
+- ✅ **New:** SynthID-Text Destroyer. Completely neutralizes Claude's new statistical watermarks by heavily perturbing token sequences. Available via CLI `--shatter-synthid` and in the browser UI.
 - ✅ **New:** Gemini API Detection. Verify if your text has a SynthID watermark mathematically before and after scrubbing.
 - ✅ **New:** WASM Web Worker Multithreading. Scrub massive 500-page EPUBs without blocking your browser UI.
 - ✅ **New:** Interactive Web Playground. Try the WASM engine instantly without installing anything! Now features full UI parity with the extension.
@@ -78,6 +79,9 @@ After rewriting, GhostMark injects invisible mathematical perturbations: 15% of 
 
 ### Grammar & Proofread Mode
 If you don't need to bypass AI detection and just want offline, private grammar checking, enable this mode. It uses the local Llama model strictly for proofreading, skipping the homoglyph perturbations.
+
+### SynthID-Text Destroyer
+Claude's SynthID-Text embeds a mathematical signature into the exact sequence of chosen tokens. By checking the "Shatter SynthID Watermark" box (or passing `--shatter-synthid` to the CLI), GhostMark's revived Statistical Humanizer actively perturbs your text before homoglyph injection. It swaps synonyms and alters transitions, completely destroying the token sequence the watermark relies on.
 
 ### Ollama Integration (100x Speedup)
 Running LLMs in the browser via WebGPU/CPU is inherently slow for large texts. GhostMark now integrates directly with [Ollama](https://ollama.com). Enable "Ollama Mode" in the UI to offload the heavy AI lifting to a local Ollama server (e.g., `ollama run llama3`), allowing you to process massive essays in seconds using true 10B+ parameter models natively on your GPU. See [Ollama Setup Guide](docs/ollama-setup.md).
