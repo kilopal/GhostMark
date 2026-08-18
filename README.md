@@ -31,7 +31,7 @@ Unlike CLI tools or Docker containers that are meant for servers, GhostMark runs
 - ✅ Achieves **0% AI Detection** on Quillbot and other detectors using advanced mathematical text perturbation (Cyrillic homoglyphs and zero-width jitter).
 - ✅ **New:** Gemini API Detection. Verify if your text has a SynthID watermark mathematically before and after scrubbing.
 - ✅ **New:** WASM Web Worker Multithreading. Scrub massive 500-page EPUBs without blocking your browser UI.
-- ✅ **New:** Interactive Web Playground. Try the WASM engine instantly without installing anything!
+- ✅ **New:** Interactive Web Playground. Try the WASM engine instantly without installing anything! Now features full UI parity with the extension.
 - ✅ **New:** Instant context-menu ingestion. Right-click any text on the web and select "Scrub with GhostMark".
 - ✅ **New:** Offline Grammar & Proofread mode.
 - ✅ **New:** Ollama Mode! Run massive 10B+ parameter models on your local GPU for instant AI inference.

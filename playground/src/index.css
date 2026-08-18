@@ -546,3 +546,69 @@ button { font-family: inherit; }
   display: flex; flex-direction: column; align-items: center;
   box-shadow: 0 20px 40px rgba(0,0,0,0.4);
 }
+/* ==========================================================================
+   Quick Toggles
+   ========================================================================== */
+.toggles-container {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  justify-content: center;
+}
+
+.toggle-row:hover .toggle-label {
+  color: var(--text-primary);
+}
+
+.toggle-track {
+  position: relative;
+  width: 28px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 100px;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  background: var(--text-primary);
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.toggle-checkbox {
+  display: none;
+}
+
+.toggle-checkbox:checked + .toggle-track {
+  background: var(--accent);
+}
+
+.toggle-checkbox:checked + .toggle-track::after {
+  left: 14px;
+  background: var(--bg-base);
+}
+
+.toggle-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: color 0.2s ease;
+}

@@ -103,6 +103,7 @@ export default function App() {
   // Settings State
   const [showSettings, setShowSettings] = useState(false);
   const [useHomoglyphs, setUseHomoglyphs] = useState(true);
+  const [useSynthIdDetect, setUseSynthIdDetect] = useState(false);
   const [llmMode, setLlmMode] = useState<'none' | 'cloud' | 'ollama' | 'webgpu'>('none');
   const [cloudProvider, setCloudProvider] = useState<'groq' | 'openai' | 'gemini' | 'deepseek'>('groq');
   
@@ -250,9 +251,11 @@ export default function App() {
       let currentText = textToProcess;
       
       let scoreBefore = "";
-      if (geminiKey) {
+      if (useSynthIdDetect && geminiKey) {
          updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: 'Checking for SynthID watermark...' }]);
          scoreBefore = await checkSynthId(textToProcess);
+      } else if (useSynthIdDetect && !geminiKey) {
+         updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: 'SynthID detection skipped: Gemini API Key missing. Please add it in Engine Settings.' }]);
       }
       
       // 1. Pre-processing
@@ -391,12 +394,12 @@ export default function App() {
       }
 
       let scoreAfter = "";
-      if (geminiKey) {
+      if (useSynthIdDetect && geminiKey) {
          scoreAfter = await checkSynthId(currentText);
       }
 
       let finalMsg = currentText;
-      if (geminiKey) {
+      if (useSynthIdDetect && geminiKey) {
          finalMsg = `[SynthID Analysis]\nBefore Scrubbing: ${scoreBefore}\nAfter Scrubbing: ${scoreAfter}\n\n[Cleaned Text]\n${currentText}`;
       }
 
@@ -787,6 +790,28 @@ export default function App() {
 
         {/* Input Box Area */}
         <div className="input-container">
+          <div className="toggles-container">
+            <label className="toggle-row" title="Instantly scrub text using WASM without AI paraphrasing">
+              <input type="checkbox" className="toggle-checkbox" checked={llmMode === 'none'} onChange={() => setLlmMode('none')} />
+              <div className="toggle-track"></div>
+              <span className="toggle-label">WASM Fast</span>
+            </label>
+            <label className="toggle-row" title="Rewrite text using WebGPU or Cloud AI APIs">
+              <input type="checkbox" className="toggle-checkbox" checked={llmMode === 'webgpu' || llmMode === 'cloud'} onChange={(e) => setLlmMode(e.target.checked ? 'webgpu' : 'none')} />
+              <div className="toggle-track"></div>
+              <span className="toggle-label">Deep Scrub</span>
+            </label>
+            <label className="toggle-row" title="Check SynthID watermarks with Gemini API">
+              <input type="checkbox" className="toggle-checkbox" checked={useSynthIdDetect} onChange={(e) => {
+                setUseSynthIdDetect(e.target.checked);
+                if (e.target.checked && !geminiKey) {
+                  setShowSettings(true);
+                }
+              }} />
+              <div className="toggle-track"></div>
+              <span className="toggle-label">SynthID Detect</span>
+            </label>
+          </div>
           <div className="input-wrapper">
             <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={(e) => { if (e.target.files && e.target.files[0]) handleFileUpload(e.target.files[0]); }} />
             
