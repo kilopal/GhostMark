@@ -103,11 +103,26 @@ export default function App() {
   // Settings State
   const [showSettings, setShowSettings] = useState(false);
   const [useHomoglyphs, setUseHomoglyphs] = useState(true);
-  const [llmMode, setLlmMode] = useState<'none' | 'groq' | 'ollama' | 'webgpu'>('none');
-  const [groqKey, setGroqKey] = useState('');
-  const [geminiKey, setGeminiKey] = useState('');
-  const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11434');
-  const [ollamaModel, setOllamaModel] = useState('llama3');
+  const [llmMode, setLlmMode] = useState<'none' | 'cloud' | 'ollama' | 'webgpu'>('none');
+  const [cloudProvider, setCloudProvider] = useState<'groq' | 'openai' | 'gemini' | 'deepseek'>('groq');
+  
+  const [groqKey, setGroqKey] = useState(localStorage.getItem('ghostmark_groq_key') || '');
+  const [openaiKey, setOpenaiKey] = useState(localStorage.getItem('ghostmark_openai_key') || '');
+  const [deepseekKey, setDeepseekKey] = useState(localStorage.getItem('ghostmark_deepseek_key') || '');
+  const [geminiKey, setGeminiKey] = useState(localStorage.getItem('ghostmark_gemini_key') || '');
+  
+  const [ollamaUrl, setOllamaUrl] = useState(localStorage.getItem('ghostmark_ollama_url') || 'http://localhost:11434');
+  const [ollamaModel, setOllamaModel] = useState(localStorage.getItem('ghostmark_ollama_model') || 'llama3');
+
+  // Persist settings
+  useEffect(() => {
+    localStorage.setItem('ghostmark_groq_key', groqKey);
+    localStorage.setItem('ghostmark_openai_key', openaiKey);
+    localStorage.setItem('ghostmark_deepseek_key', deepseekKey);
+    localStorage.setItem('ghostmark_gemini_key', geminiKey);
+    localStorage.setItem('ghostmark_ollama_url', ollamaUrl);
+    localStorage.setItem('ghostmark_ollama_model', ollamaModel);
+  }, [groqKey, openaiKey, deepseekKey, geminiKey, ollamaUrl, ollamaModel]);
 
   // Transformers.js State
   const [hfPipeline, setHfPipeline] = useState<any>(null);
@@ -247,23 +262,67 @@ export default function App() {
       }
 
       // 2. LLM Engine
-      if (llmMode === 'groq' && groqKey) {
-         setProcessStatus('Scrubbing via BYOK (Groq)...');
-         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
-            body: JSON.stringify({
-              model: 'llama3-70b-8192',
-              messages: [
-                { role: 'system', content: 'You are an expert editor. Rewrite the user\'s text to sound conversational and human. Preserve the exact same meaning, facts, and names. Output ONLY the rewritten text, nothing else.' },
-                { role: 'user', content: currentText }
-              ],
-              temperature: 0.6,
-            })
-         });
-         if (!res.ok) throw new Error("Groq API Error.");
-         const data = await res.json();
-         currentText = data.choices[0].message.content;
+      if (llmMode === 'cloud') {
+         const providerNames = { groq: 'Groq', openai: 'OpenAI', deepseek: 'DeepSeek', gemini: 'Gemini' };
+         setProcessStatus(`Scrubbing via BYOK (${providerNames[cloudProvider]})...`);
+         
+         const systemPrompt = 'You are an expert editor. Rewrite the user\'s text to sound conversational and human. Preserve the exact same meaning, facts, and names. Output ONLY the rewritten text, nothing else.';
+         
+         if (cloudProvider === 'groq' && groqKey) {
+           const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
+              body: JSON.stringify({
+                model: 'llama3-70b-8192',
+                messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: currentText }],
+                temperature: 0.6,
+              })
+           });
+           if (!res.ok) throw new Error("Groq API Error.");
+           const data = await res.json();
+           currentText = data.choices[0].message.content;
+         } else if (cloudProvider === 'openai' && openaiKey) {
+           const res = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey}` },
+              body: JSON.stringify({
+                model: 'gpt-4o-mini',
+                messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: currentText }],
+                temperature: 0.6,
+              })
+           });
+           if (!res.ok) throw new Error("OpenAI API Error.");
+           const data = await res.json();
+           currentText = data.choices[0].message.content;
+         } else if (cloudProvider === 'deepseek' && deepseekKey) {
+           const res = await fetch('https://api.deepseek.com/chat/completions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${deepseekKey}` },
+              body: JSON.stringify({
+                model: 'deepseek-chat',
+                messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: currentText }],
+                temperature: 0.6,
+              })
+           });
+           if (!res.ok) throw new Error("DeepSeek API Error.");
+           const data = await res.json();
+           currentText = data.choices[0].message.content;
+         } else if (cloudProvider === 'gemini' && geminiKey) {
+           const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                system_instruction: { parts: [{ text: systemPrompt }] },
+                contents: [{ role: 'user', parts: [{ text: currentText }] }],
+                generationConfig: { temperature: 0.6 }
+              })
+           });
+           if (!res.ok) throw new Error("Gemini API Error.");
+           const data = await res.json();
+           currentText = data.candidates?.[0]?.content?.parts?.[0]?.text || currentText;
+         } else {
+           throw new Error(`Missing API Key for ${providerNames[cloudProvider]}.`);
+         }
       } else if (llmMode === 'ollama') {
          setProcessStatus('Scrubbing via Local Ollama...');
          const res = await fetch(`${ollamaUrl}/api/generate`, {
@@ -436,7 +495,9 @@ export default function App() {
   const getEngineName = () => {
     switch (llmMode) {
       case 'none': return 'WASM Only';
-      case 'groq': return 'BYOK (Groq)';
+      case 'cloud': 
+        const names = { groq: 'Groq', openai: 'OpenAI', deepseek: 'DeepSeek', gemini: 'Gemini' };
+        return `BYOK (${names[cloudProvider]})`;
       case 'ollama': return 'Local Ollama';
       case 'webgpu': return 'Local WebGPU 3.8B';
     }
@@ -567,7 +628,7 @@ export default function App() {
                     <label className="select-label">Deep Scrub Engine</label>
                     <div className="engine-grid">
                       <button className={`engine-btn ${llmMode === 'none' ? 'active' : ''}`} onClick={() => setLlmMode('none')}>WASM Only</button>
-                      <button className={`engine-btn ${llmMode === 'groq' ? 'active' : ''}`} onClick={() => setLlmMode('groq')}>BYOK (Groq)</button>
+                      <button className={`engine-btn ${llmMode === 'cloud' ? 'active' : ''}`} onClick={() => setLlmMode('cloud')}>BYOK (Cloud)</button>
                       <button className={`engine-btn ${llmMode === 'ollama' ? 'active' : ''}`} onClick={() => setLlmMode('ollama')}>Ollama (10B)</button>
                       <button className={`engine-btn ${llmMode === 'webgpu' ? 'active' : ''}`} onClick={() => {
                         if (window.innerWidth < 768 || /Mobi|Android/i.test(navigator.userAgent)) {
@@ -585,10 +646,26 @@ export default function App() {
                     <p className="setting-desc" style={{marginTop: '4px'}}>If set, GhostMark will query Google to verify SynthID removal.</p>
                   </div>
 
-                  {llmMode === 'groq' && (
+                  {llmMode === 'cloud' && (
                     <div className="setting-group animate-fade-in">
-                      <label className="select-label">Groq API Key</label>
-                      <input type="password" value={groqKey} onChange={(e) => setGroqKey(e.target.value)} placeholder="gsk_..." className="modern-input" />
+                      <label className="select-label">Cloud Provider</label>
+                      <select 
+                        className="modern-input mb-2" 
+                        value={cloudProvider} 
+                        onChange={(e) => setCloudProvider(e.target.value as any)}
+                        style={{ appearance: 'auto', backgroundColor: 'var(--surface-light)', color: 'var(--text-primary)' }}
+                      >
+                        <option value="groq">Groq (Fastest)</option>
+                        <option value="openai">OpenAI (ChatGPT)</option>
+                        <option value="gemini">Google Gemini</option>
+                        <option value="deepseek">DeepSeek</option>
+                      </select>
+                      
+                      <label className="select-label">{cloudProvider === 'groq' ? 'Groq' : cloudProvider === 'openai' ? 'OpenAI' : cloudProvider === 'deepseek' ? 'DeepSeek' : 'Gemini'} API Key</label>
+                      {cloudProvider === 'groq' && <input type="password" value={groqKey} onChange={(e) => setGroqKey(e.target.value)} placeholder="gsk_..." className="modern-input" />}
+                      {cloudProvider === 'openai' && <input type="password" value={openaiKey} onChange={(e) => setOpenaiKey(e.target.value)} placeholder="sk-..." className="modern-input" />}
+                      {cloudProvider === 'deepseek' && <input type="password" value={deepseekKey} onChange={(e) => setDeepseekKey(e.target.value)} placeholder="sk-..." className="modern-input" />}
+                      {cloudProvider === 'gemini' && <input type="password" value={geminiKey} onChange={(e) => setGeminiKey(e.target.value)} placeholder="AIza..." className="modern-input" />}
                     </div>
                   )}
 
