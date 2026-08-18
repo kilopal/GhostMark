@@ -9,24 +9,40 @@
        DESIGN TOKENS (ChatGPT Dark Mode Style)
        ======================================== */
     :root {
-      --bg-base:       #212121;
-      --bg-raised:     #2f2f2f;
-      --bg-input:      #2f2f2f;
-      --bg-hover:      #383838;
-      --border:        transparent;
-      --border-focus:  #424242;
-      --text-primary:  #ececec;
-      --text-secondary:#b4b4b4;
-      --text-tertiary: #9b9b9b;
-      --accent:        #ffffff;
-      --accent-dim:    rgba(255,255,255,0.1);
+      --bg-base:       #ffffff;
+      --bg-raised:     #f4f4f5;
+      --bg-input:      #ffffff;
+      --bg-hover:      #f4f4f5;
+      --border:        #e4e4e7;
+      --border-focus:  #a1a1aa;
+      --text-primary:  #09090b;
+      --text-secondary:#52525b;
+      --text-tertiary: #71717a;
+      --accent:        #09090b;
+      --accent-dim:    rgba(0,0,0,0.1);
       --danger:        #ef4444;
       --danger-dim:    rgba(239, 68, 68, 0.1);
       --info:          #3b82f6;
       --info-dim:      rgba(59, 130, 246, 0.1);
-      --radius-sm:     8px;
-      --radius-md:     16px;
-      --radius-lg:     24px;
+      --radius-sm:     4px;
+      --radius-md:     6px;
+      --radius-lg:     8px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-base:       #000000;
+        --bg-raised:     #0a0a0a;
+        --bg-input:      #000000;
+        --bg-hover:      #1a1a1a;
+        --border:        #222222;
+        --border-focus:  #333333;
+        --text-primary:  #ededed;
+        --text-secondary:#a1a1aa;
+        --text-tertiary: #71717a;
+        --accent:        #ffffff;
+        --accent-dim:    rgba(255,255,255,0.1);
+      }
     }
 
     /* ========================================
@@ -328,11 +344,10 @@
       align-items: flex-end;
       gap: 12px;
       background: var(--bg-input);
-      border: 1px solid var(--bg-raised);
+      border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       padding: 10px 14px;
       transition: border-color 0.2s ease;
-      box-shadow: 0 0 15px rgba(0,0,0,0.1);
     }
 
     .input-bar:focus-within {
@@ -483,9 +498,15 @@
       </div>
       <span class="brand-name">GhostMark</span>
     </div>
-    <div class="status" id="statusBox">
-      <div class="status-dot"></div>
-      <span id="status">Initializing</span>
+    <div style="display:flex; align-items:center; gap: 12px;">
+      <div class="status" id="statusBox">
+        <div class="status-dot"></div>
+        <span id="status">Initializing</span>
+      </div>
+      <button id="themeToggleBtn" style="background:transparent; border:none; cursor:pointer; color:var(--text-secondary); display:flex; align-items:center; justify-content:center; padding:4px;" title="Toggle Theme">
+        <svg id="themeIconDark" style="display:none;" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        <svg id="themeIconLight" style="display:none;" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="4.22" x2="19.78" y2="5.64"></line></svg>
+      </button>
     </div>
   </header>
 

@@ -92,7 +92,7 @@ async function getParaphraser() {
 async function run() {
   try {
     // 1. Load WASM engine (always works, no GPU needed)
-    wasmWorker = new Worker('wasm-worker.js', { type: 'module' });
+    wasmWorker = new Worker(chrome.runtime.getURL('wasm-worker.js'), { type: 'module' });
     wasmLoaded = true;
     setStatus('Ready', 'success');
 
@@ -632,4 +632,33 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     
     document.getElementById('scrubBtn').click();
   }
+});
+
+// Theme Toggle
+const themeToggleBtn = document.getElementById('themeToggleBtn');
+const themeIconDark = document.getElementById('themeIconDark');
+const themeIconLight = document.getElementById('themeIconLight');
+
+function updateThemeUI(theme) {
+  if (theme === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    themeIconLight.style.display = 'block';
+    themeIconDark.style.display = 'none';
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+    themeIconLight.style.display = 'none';
+    themeIconDark.style.display = 'block';
+  }
+}
+
+chrome.storage.local.get(['theme'], (result) => {
+  const currentTheme = result.theme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  updateThemeUI(currentTheme);
+});
+
+themeToggleBtn.addEventListener('click', () => {
+  const isDark = document.documentElement.hasAttribute('data-theme');
+  const newTheme = isDark ? 'light' : 'dark';
+  updateThemeUI(newTheme);
+  chrome.storage.local.set({ theme: newTheme });
 });

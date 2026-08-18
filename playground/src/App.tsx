@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowUp, Paperclip, Download, FileCode, Globe, Terminal, AlertCircle, X, ChevronDown, CheckCircle2, Code2, Trash2, Menu, Bot } from 'lucide-react';
+import { ArrowUp, Paperclip, Download, FileCode, Globe, Terminal, AlertCircle, X, ChevronDown, CheckCircle2, Code2, Trash2, Menu, Bot, Square, RotateCcw, Sun, Moon } from 'lucide-react';
 import { pipeline, env } from '@huggingface/transformers';
 
 type Message = {
@@ -91,11 +91,18 @@ export default function App() {
     });
   };
 
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [processingSessionId, setProcessingSessionId] = useState<string | null>(null);
+  const [processingSessions, setProcessingSessions] = useState<Record<string, boolean>>({});
+  const [abortControllers, setAbortControllers] = useState<Record<string, AbortController>>({});
   const [processingTime, setProcessingTime] = useState(0);
   const [wasmWorker, setWasmWorker] = useState<Worker | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>((localStorage.getItem('ghostmark_theme') as any) || 'light');
+  
+  // Apply theme
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('ghostmark_theme', theme);
+  }, [theme]);
   
   // Settings State
   const [showSettings, setShowSettings] = useState(false);
@@ -145,13 +152,13 @@ export default function App() {
   // Scroll to bottom of feed
   useEffect(() => {
     feedEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isProcessing]);
+  }, [messages, processingSessions]);
 
   // Processing Timer
   useEffect(() => {
     let interval: any;
-    if (isProcessing) {
-      setProcessingTime(0);
+    const anyProcessing = Object.values(processingSessions).some(Boolean);
+    if (anyProcessing) {
       interval = setInterval(() => {
         setProcessingTime(prev => prev + 0.1);
       }, 100);
@@ -159,7 +166,7 @@ export default function App() {
       setProcessingTime(0);
     }
     return () => clearInterval(interval);
-  }, [isProcessing]);
+  }, [processingSessions]);
 
   // Initialize Web Worker on mount
   useEffect(() => {
@@ -234,16 +241,20 @@ export default function App() {
     }
   };
 
-  const handleProcessText = async () => {
-    if (!inputText.trim() || isProcessing) return;
+  const handleProcessText = async (overrideText?: string) => {
+    const currentSessionId = activeSessionIdRef.current;
+    const textToProcess = overrideText || inputText;
+    if (!textToProcess.trim() || !currentSessionId || processingSessions[currentSessionId]) return;
     
-    const textToProcess = inputText;
-    setInputText('');
-    if (textAreaRef.current) textAreaRef.current.style.height = 'auto';
-
-    updateMessages((prev: Message[]) => [...prev, { role: 'user', content: textToProcess }]);
-    setProcessingSessionId(activeSessionIdRef.current);
-    setIsProcessing(true);
+    if (!overrideText) {
+      setInputText('');
+      if (textAreaRef.current) textAreaRef.current.style.height = 'auto';
+      updateMessages((prev: Message[]) => [...prev, { role: 'user', content: textToProcess }]);
+    }
+    
+    const controller = new AbortController();
+    setAbortControllers(prev => ({ ...prev, [currentSessionId]: controller }));
+    setProcessingSessions(prev => ({ ...prev, [currentSessionId]: true }));
 
     try {
       let currentText = textToProcess;
@@ -262,7 +273,8 @@ export default function App() {
         currentText = await runWasmWorker('sanitize_text', textToProcess);
       }
 
-      // 2. LLM Engine
+      if (controller.signal.aborted) throw new Error("Cancelled by user");
+
       if (llmMode === 'cloud') {
          const providerNames = { groq: 'Groq', openai: 'OpenAI', deepseek: 'DeepSeek', gemini: 'Gemini' };
          setProcessStatus(`Scrubbing via BYOK (${providerNames[cloudProvider]})...`);
@@ -277,7 +289,8 @@ export default function App() {
                 model: 'llama3-70b-8192',
                 messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: currentText }],
                 temperature: 0.6,
-              })
+              }),
+              signal: controller.signal
            });
            if (!res.ok) throw new Error("Groq API Error.");
            const data = await res.json();
@@ -290,7 +303,8 @@ export default function App() {
                 model: 'gpt-4o-mini',
                 messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: currentText }],
                 temperature: 0.6,
-              })
+              }),
+              signal: controller.signal
            });
            if (!res.ok) throw new Error("OpenAI API Error.");
            const data = await res.json();
@@ -303,7 +317,8 @@ export default function App() {
                 model: 'deepseek-chat',
                 messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: currentText }],
                 temperature: 0.6,
-              })
+              }),
+              signal: controller.signal
            });
            if (!res.ok) throw new Error("DeepSeek API Error.");
            const data = await res.json();
@@ -316,7 +331,8 @@ export default function App() {
                 system_instruction: { parts: [{ text: systemPrompt }] },
                 contents: [{ role: 'user', parts: [{ text: currentText }] }],
                 generationConfig: { temperature: 0.6 }
-              })
+              }),
+              signal: controller.signal
            });
            if (!res.ok) throw new Error("Gemini API Error.");
            const data = await res.json();
@@ -334,7 +350,8 @@ export default function App() {
               system: 'You are an expert editor. Rewrite the user\'s text to sound conversational and human. Preserve the exact same meaning. Output ONLY the rewritten text.',
               prompt: currentText,
               stream: false
-            })
+            }),
+            signal: controller.signal
          });
          if (!res.ok) throw new Error("Ollama server not responding.");
          const data = await res.json();
@@ -342,6 +359,8 @@ export default function App() {
       } else if (llmMode === 'webgpu') {
          setProcessStatus('Loading 3.8B WebGPU Model into VRAM (Takes ~10-25s)...');
          const pipe = await getParaphraser();
+         
+         if (controller.signal.aborted) throw new Error("Cancelled by user");
          
          setProcessStatus('Scrubbing via WebGPU Neural Network...');
          // Split into ~400 char chunks. The 1B model is too small to handle
@@ -369,6 +388,7 @@ export default function App() {
 
          const rewrittenParts: string[] = [];
          for (const chunk of chunks) {
+           if (controller.signal.aborted) throw new Error("Cancelled by user");
            const chat = [
              { role: 'system', content: 'You are an expert editor. Rewrite the user\'s text to sound conversational and human. You MUST preserve the exact same meaning, names, genders, and pronouns (he/she/they) as the original. Output only the rewritten text.' },
              { role: 'user', content: chunk }
@@ -403,17 +423,48 @@ export default function App() {
 
       updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: finalMsg }]);
     } catch (err: any) {
-      updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: `Error: ${err.message}` }]);
+      if (err.name === 'AbortError' || err.message === 'Cancelled by user') {
+         updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: `Cancelled.` }]);
+      } else {
+         updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: `Error: ${err.message}` }]);
+      }
     } finally {
-      setIsProcessing(false);
-      setProcessingSessionId(null);
+      if (currentSessionId) {
+        setProcessingSessions(prev => ({ ...prev, [currentSessionId]: false }));
+        setAbortControllers(prev => {
+          const next = { ...prev };
+          delete next[currentSessionId];
+          return next;
+        });
+      }
+    }
+  };
+
+  const handleStop = () => {
+    const currentSessionId = activeSessionIdRef.current;
+    if (currentSessionId && abortControllers[currentSessionId]) {
+      abortControllers[currentSessionId].abort();
+      setProcessingSessions(prev => ({ ...prev, [currentSessionId]: false }));
+    }
+  };
+
+  const handleRetry = (idx: number) => {
+    // find the previous user message
+    const userMsg = [...messages].slice(0, idx).reverse().find(m => m.role === 'user');
+    if (userMsg && userMsg.content) {
+       // remove the current assistant message from the chat
+       updateMessages((prev: Message[]) => prev.filter((_, i) => i !== idx));
+       handleProcessText(userMsg.content);
     }
   };
 
   const processFile = async (file: File) => {
     if (!wasmWorker) return;
+    const currentSessionId = activeSessionIdRef.current;
+    if (!currentSessionId) return;
+    
     updateMessages((prev: Message[]) => [...prev, { role: 'user', content: `Attached File: ${file.name}` }]);
-    setIsProcessing(true);
+    setProcessingSessions(prev => ({ ...prev, [currentSessionId]: true }));
     
     try {
       const arrayBuffer = await file.arrayBuffer();
@@ -434,7 +485,7 @@ export default function App() {
     } catch (err: any) {
       updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: `Error processing file: ${err.message}` }]);
     } finally {
-      setIsProcessing(false);
+      setProcessingSessions(prev => ({ ...prev, [currentSessionId]: false }));
     }
   };
 
@@ -445,10 +496,12 @@ export default function App() {
     if (['png', 'jpeg', 'jpg', 'webp', 'bmp', 'gif', 'pdf', 'docx', 'epub', 'odt', 'svg'].includes(ext || '')) {
       await processFile(file);
     } else if (['txt', 'md', 'json'].includes(ext || '')) {
-      // For text files, read as string, run WASM, then download as Blob
+      const currentSessionId = activeSessionIdRef.current;
+      if (!currentSessionId) return;
+      
       updateMessages((prev: Message[]) => [...prev, { role: 'user', content: `Attached File: ${file.name}` }]);
       try {
-         setIsProcessing(true);
+         setProcessingSessions(prev => ({ ...prev, [currentSessionId]: true }));
          const text = await file.text();
          const cleaned = await runWasmWorker('sanitize_text', text);
          const encoder = new TextEncoder();
@@ -465,7 +518,7 @@ export default function App() {
       } catch (err: any) {
          updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: `Error processing text file: ${err.message}` }]);
       } finally {
-         setIsProcessing(false);
+         setProcessingSessions(prev => ({ ...prev, [currentSessionId]: false }));
       }
     } else {
       updateMessages((prev: Message[]) => [...prev, { role: 'user', content: `Attached File: ${file.name}` }]);
@@ -565,8 +618,12 @@ export default function App() {
         </div>
         
         <div className="sidebar-footer">
+           <button className="sidebar-btn" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} title="Toggle Theme">
+              {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+              <span>{theme === 'light' ? 'Dark Mode' : 'Light Mode'}</span>
+           </button>
            <button className="sidebar-btn" onClick={() => setShowSettings(true)}>
-              <div className="avatar user" style={{ width: 24, height: 24, fontSize: '0.75rem', borderRadius: '50%', background: '#fff', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>G</div>
+              <div className="avatar user" style={{ width: 24, height: 24, fontSize: '0.75rem', borderRadius: '50%', background: 'var(--bg-surface-hover)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>G</div>
               <span>Engine Settings</span>
            </button>
         </div>
@@ -761,6 +818,11 @@ export default function App() {
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                           </button>
                         )}
+                        {!msg.isDownloadable && (
+                          <button onClick={() => handleRetry(idx)} className="action-btn icon-only" title="Retry">
+                            <RotateCcw size={16} />
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -771,15 +833,22 @@ export default function App() {
           )}
 
           {/* Loading Indicator */}
-          {isProcessing && processingSessionId === activeSessionId && (
+          {processingSessions[activeSessionId || ''] && (
              <div className="message-row assistant">
                <div className="message-content animate-fade-in">
                  <div className="avatar assistant pulse-bg">👻</div>
-                 <div style={{ paddingTop: '6px', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                   {llmMode === 'webgpu' && hfProgress > 0 && hfProgress < 100 
-                      ? `Downloading Model... ${hfProgress}%` 
-                      : <span className="animate-pulse">{processStatus} ({processingTime.toFixed(1)}s)</span>
-                   }
+                 <div style={{ flex: 1, minWidth: 0 }}>
+                   <div style={{ paddingTop: '6px', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+                     {llmMode === 'webgpu' && hfProgress > 0 && hfProgress < 100 
+                        ? `Downloading Model... ${hfProgress}%` 
+                        : <span className="animate-pulse">{processStatus} ({processingTime.toFixed(1)}s)</span>
+                     }
+                   </div>
+                   <div className="msg-actions" style={{ marginTop: '12px' }}>
+                     <button onClick={handleStop} className="action-btn" style={{ color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
+                       <Square size={14} fill="currentColor" /> Stop Generation
+                     </button>
+                   </div>
                  </div>
                </div>
              </div>
@@ -830,12 +899,18 @@ export default function App() {
               }}
               placeholder="Message GhostMark..."
               rows={1}
-              disabled={isProcessing || !wasmWorker}
+              disabled={processingSessions[activeSessionId || ''] || !wasmWorker}
             />
 
-            <button className="submit-btn" onClick={handleProcessText} disabled={!inputText.trim() || isProcessing || !wasmWorker}>
-              <ArrowUp size={20} strokeWidth={2.5} />
-            </button>
+            {processingSessions[activeSessionId || ''] ? (
+              <button className="submit-btn" onClick={handleStop} style={{ backgroundColor: 'var(--text-primary)', color: 'var(--bg-surface)' }}>
+                <Square size={16} strokeWidth={2.5} fill="currentColor" />
+              </button>
+            ) : (
+              <button className="submit-btn" onClick={() => handleProcessText()} disabled={!inputText.trim() || !wasmWorker}>
+                <ArrowUp size={20} strokeWidth={2.5} />
+              </button>
+            )}
           </div>
           <div className="disclaimer">
             GhostMark WASM Engine handles PDF, DOCX, EPUB, ODT, SVG and Images directly in your browser.
