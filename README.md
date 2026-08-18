@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/kilopal/ghostmark/playground/public/website/ghosttt.png" width="128" alt="GhostMark Logo">
+  <img src="https://raw.githubusercontent.com/kilopal/GhostMark/main/playground/public/website/ghosttt.png" width="720" alt="GhostMark Screenshot">
   <h1>GhostMark</h1>
   <p><strong>The world's first 100% offline, zero-install AI watermark stripper.</strong></p>
 </div>
