@@ -23,3 +23,8 @@ A Manifest V3 browser extension for Chrome/Edge/Brave.
 - **Design**: Card-based feed layout with structured result cards, built with vanilla HTML/CSS. Uses a refined dark color system and intentional micro-animations.
 - **AI Engine**: Uses `@huggingface/transformers` with `onnx-community/Llama-3.2-1B-Instruct` via ONNX WASM for CPU-based text rewriting. No WebGPU required — runs on any device. The model (~800MB - 1.5GB) is downloaded once and cached by the browser.
 - **Role**: Connects directly to the `ghostmark-wasm` package (`extension/pkg/`). Intercepts user inputs, passes them to the local WASM engine, and copies the mathematically scrubbed payload directly to the user's clipboard in milliseconds without ever communicating with an external API.
+
+## 5. `playground/`
+An interactive web playground for trying the WASM engine natively in the browser.
+- **Design**: Mirrors the extension UI with quick-action toggles (WASM Fast, Deep Scrub, SynthID Detect) and multi-chat session management.
+- **Role**: Allows instant testing of homoglyph injection and metadata stripping without installing the extension. Integrates with cloud LLMs (OpenAI, Gemini, DeepSeek, Groq) using a BYOK (Bring Your Own Key) approach.

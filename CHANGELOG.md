@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [0.12.0] - 2026-08-18
 ### Added
+- **Playground UI Parity**: Added quick-action toggle switches to the Web Playground, mirroring the Chrome Extension. Users can now easily switch between "WASM Fast", "Deep Scrub", and "SynthID Detect" modes directly above the input area.
 - **Multi-Provider BYOK Engine**: Expanded the "BYOK (Groq)" engine in the Playground to support OpenAI (ChatGPT), Google Gemini, DeepSeek, and Groq APIs. API keys are now securely persisted to the browser's `localStorage`.
 
 ### Fixed
