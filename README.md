@@ -33,6 +33,7 @@ Unlike CLI tools or Docker containers that are meant for servers, GhostMark runs
 - ✅ **New:** Instant context-menu ingestion. Right-click any text on the web and select "Scrub with GhostMark".
 - ✅ **New:** Offline Grammar & Proofread mode.
 - ✅ **New:** Ollama Mode! Run massive 10B+ parameter models on your local GPU for instant AI inference.
+- ✅ **New:** ChatGPT-style Sidebar with multi-chat session history saved directly to your browser.
 - ✅ Card-based dark mode UI with structured result cards.
 
 ---

@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.10.0] - 2026-08-18
+### Added
+- **Sidebar Chat History**: Added a ChatGPT-style sidebar to the web playground for multi-chat session management. Sessions are persisted instantly to local storage.
+- **Session State Management**: Migrated the playground from a single message array to a robust multi-session array with title generation.
+
 ## [0.9.0] - 2026-08-18
 ### Added
 - **Docker Support**: Added multi-stage `Dockerfile` and `docker-compose.yml` for instant self-hosted deployments. The final image is under 80 MB thanks to a `debian:bookworm-slim` runtime stage.

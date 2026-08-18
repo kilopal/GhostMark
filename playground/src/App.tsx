@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowUp, Paperclip, Download, FileCode, Globe, Terminal, AlertCircle, X, ChevronDown, CheckCircle2, Code2 } from 'lucide-react';
+import { ArrowUp, Paperclip, Download, FileCode, Globe, Terminal, AlertCircle, X, ChevronDown, CheckCircle2, Code2, Trash2 } from 'lucide-react';
 import initWasm, { sanitize_text_wasm, strip_image_bytes_wasm, strip_pdf_metadata_wasm, strip_docx_metadata_wasm, strip_epub_metadata_wasm, strip_odt_metadata_wasm, strip_svg_metadata_wasm } from './pkg/ghostmark_wasm.js';
 import wasmUrl from './pkg/ghostmark_wasm_bg.wasm?url';
 import { pipeline, env } from '@huggingface/transformers';
@@ -14,9 +14,89 @@ type Message = {
   fileType?: string;
 };
 
+type Session = {
+  id: string;
+  title: string;
+  messages: Message[];
+  updatedAt: number;
+};
+
 export default function App() {
   const [inputText, setInputText] = useState('');
-  const [messages, setMessages] = useState<Message[]>([]);
+  
+  const [sessions, setSessions] = useState<Session[]>(() => {
+    const saved = localStorage.getItem('ghostmark-sessions');
+    if (saved) {
+      try { return JSON.parse(saved); } catch(e) {}
+    }
+    return [];
+  });
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(() => {
+    return localStorage.getItem('ghostmark-active-session');
+  });
+
+  useEffect(() => {
+    const savable = sessions.map(s => ({
+       ...s,
+       messages: s.messages.map((m: Message) => ({ ...m, fileBytes: undefined }))
+    }));
+    localStorage.setItem('ghostmark-sessions', JSON.stringify(savable));
+  }, [sessions]);
+
+  useEffect(() => {
+    if (activeSessionId) {
+      localStorage.setItem('ghostmark-active-session', activeSessionId);
+    }
+  }, [activeSessionId]);
+
+  const activeSession = sessions.find(s => s.id === activeSessionId);
+  const messages = activeSession ? activeSession.messages : [];
+
+  const updateMessages = (updater: any) => {
+    setSessions(prev => {
+      let currentId = activeSessionId;
+      let currentSession = prev.find(s => s.id === currentId);
+      
+      if (!currentSession) {
+         currentId = Date.now().toString();
+         currentSession = { id: currentId, title: 'New Chat', messages: [], updatedAt: Date.now() };
+      }
+
+      const updatedMessages = typeof updater === 'function' ? updater(currentSession.messages) : updater;
+      
+      let newTitle = currentSession.title;
+      if (currentSession.messages.length === 0 && updatedMessages.length > 0 && updatedMessages[0].role === 'user') {
+         newTitle = updatedMessages[0].content.slice(0, 30) + (updatedMessages[0].content.length > 30 ? '...' : '');
+      }
+
+      const newSession = { ...currentSession, messages: updatedMessages, title: newTitle, updatedAt: Date.now() };
+      
+      if (!prev.find(s => s.id === currentId)) {
+          return [newSession, ...prev];
+      }
+      
+      return prev.map(s => s.id === currentId ? newSession : s).sort((a, b) => b.updatedAt - a.updatedAt);
+    });
+    
+    setSessions(s => {
+       if (s.length > 0 && !activeSessionId) {
+           setTimeout(() => setActiveSessionId(s[0].id), 0);
+       }
+       return s;
+    });
+  };
+
+  const deleteSession = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSessions(prev => {
+      const next = prev.filter(s => s.id !== id);
+      if (activeSessionId === id) {
+        setTimeout(() => setActiveSessionId(next.length > 0 ? next[0].id : null), 0);
+      }
+      return next;
+    });
+  };
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [wasmEngine, setWasmEngine] = useState<any>(null);
   
@@ -91,7 +171,7 @@ export default function App() {
     setInputText('');
     if (textAreaRef.current) textAreaRef.current.style.height = 'auto';
 
-    setMessages(prev => [...prev, { role: 'user', content: textToProcess }]);
+    updateMessages((prev: Message[]) => [...prev, { role: 'user', content: textToProcess }]);
     setIsProcessing(true);
 
     try {
@@ -149,9 +229,9 @@ export default function App() {
          currentText = wasmEngine(currentText, true);
       }
 
-      setMessages(prev => [...prev, { role: 'assistant', content: currentText }]);
+      updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: currentText }]);
     } catch (err: any) {
-      setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${err.message}` }]);
+      updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: `Error: ${err.message}` }]);
     } finally {
       setIsProcessing(false);
     }
@@ -159,7 +239,7 @@ export default function App() {
 
   const processFile = async (file: File, wasmFunc: any) => {
     if (!wasmEngine) return;
-    setMessages(prev => [...prev, { role: 'user', content: `Attached File: ${file.name}` }]);
+    updateMessages((prev: Message[]) => [...prev, { role: 'user', content: `Attached File: ${file.name}` }]);
     setIsProcessing(true);
     
     try {
@@ -168,7 +248,7 @@ export default function App() {
       const cleanedBytes = wasmFunc(uint8Array);
       const removedBytes = uint8Array.length - cleanedBytes.length;
       
-      setMessages(prev => [...prev, { 
+      updateMessages((prev: Message[]) => [...prev, { 
         role: 'assistant', 
         content: `Scrubbed successfully! Removed ${removedBytes} bytes of hidden metadata/tracking data.`,
         isDownloadable: true,
@@ -177,7 +257,7 @@ export default function App() {
         fileType: file.type
       }]);
     } catch (err: any) {
-      setMessages(prev => [...prev, { role: 'assistant', content: `Error processing file: ${err.message}` }]);
+      updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: `Error processing file: ${err.message}` }]);
     } finally {
       setIsProcessing(false);
     }
@@ -200,8 +280,8 @@ export default function App() {
     } else if (ext === 'svg') {
       await processFile(file, strip_svg_metadata_wasm);
     } else {
-      setMessages(prev => [...prev, { role: 'user', content: `Attached File: ${file.name}` }]);
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Error: Unsupported file type. GhostMark Web supports Text, Images, PDF, DOCX, EPUB, ODT, and SVG.' }]);
+      updateMessages((prev: Message[]) => [...prev, { role: 'user', content: `Attached File: ${file.name}` }]);
+      updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: 'Error: Unsupported file type. GhostMark Web supports Text, Images, PDF, DOCX, EPUB, ODT, and SVG.' }]);
     }
   };
 
@@ -247,6 +327,61 @@ export default function App() {
            }
          }}>
       
+      <aside className="sidebar">
+        <button className="sidebar-btn sidebar-new-chat" onClick={() => { setActiveSessionId(Date.now().toString()); }}>
+          <span>New Chat</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </button>
+
+        <div className="sidebar-links">
+          <a href="https://github.com/kilopal/GhostMark/tree/main/cli" target="_blank" rel="noreferrer" className="sidebar-btn" style={{textDecoration: 'none'}}>
+             <Terminal size={16} />
+             <span>GhostMark CLI</span>
+          </a>
+          <a href="https://github.com/kilopal/GhostMark/tree/main/wasm" target="_blank" rel="noreferrer" className="sidebar-btn" style={{textDecoration: 'none'}}>
+             <Code2 size={16} />
+             <span>WASM API</span>
+          </a>
+          <a href="https://github.com/kilopal/GhostMark/tree/main/extension" target="_blank" rel="noreferrer" className="sidebar-btn" style={{textDecoration: 'none'}}>
+             <Globe size={16} />
+             <span>Chrome Extension</span>
+          </a>
+        </div>
+
+        <div className="sidebar-section-title">Recent Chats</div>
+
+        <div className="sidebar-sessions">
+          {sessions.length === 0 && (
+             <div className="sidebar-empty">No recent chats</div>
+          )}
+          {sessions.map(s => (
+            <button 
+              key={s.id} 
+              className={`sidebar-btn ${s.id === activeSessionId ? 'active' : ''}`} 
+              onClick={() => setActiveSessionId(s.id)}
+            >
+              <div className="session-title">{s.title || 'New Chat'}</div>
+              <div 
+                className="delete-session-btn" 
+                onClick={(e) => deleteSession(s.id, e)}
+                title="Delete Chat"
+              >
+                <Trash2 size={14} />
+              </div>
+            </button>
+          ))}
+        </div>
+        
+        <div className="sidebar-footer">
+           <button className="sidebar-btn" onClick={() => setShowSettings(true)}>
+              <div className="avatar user" style={{ width: 24, height: 24, fontSize: '0.75rem', borderRadius: '50%', background: '#fff', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>G</div>
+              <span>Engine Settings</span>
+           </button>
+        </div>
+      </aside>
+
+      <div className="app-content">
+
       {/* Drag Overlay */}
       {isHoveringFile && (
         <div className="drag-overlay animate-fade-in">
@@ -457,6 +592,8 @@ export default function App() {
             GhostMark WASM Engine handles PDF, DOCX, EPUB, ODT, SVG and Images directly in your browser.
           </div>
         </div>
+      </div>
+
       </div>
 
       {/* Settings Backdrop */}
