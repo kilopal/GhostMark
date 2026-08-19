@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.14.0] - 2026-08-19
+### Added
+- **Markdown Support**: Added full markdown rendering to the chat feed in the Web Playground using `react-markdown` and `remark-gfm`, enabling beautiful formatting, bold text, and code blocks for AI engine outputs.
+- **SynthID Image Scanning**: Added an advanced vision integration to the Web Playground. When "SynthID Detect" is enabled and an image is uploaded, GhostMark now queries the `gemini-2.5-flash` vision model to analyze visual artifacts and cryptographic signatures (like SynthID) to determine if the image is AI-generated.
+
+### Fixed
+- **Mobile Viewport Bug**: Fixed a notorious mobile browser `100vh` layout bug in the Web Playground (`index.css`) that was causing the top navigation bar and logo to be clipped under the browser's address bar. Switched layout constraints to use `100dvh` (Dynamic Viewport Height).
+
 ## [0.13.0] - 2026-08-18
 ### Added
 - **SynthID-Text Destroyer**: Armed GhostMark to completely neutralize Claude's new SynthID-Text statistical watermark. Revived the Statistical Humanizer engine in the Rust core to aggressively perturb tokens via synonym swapping and phrasing changes, destroying the mathematical token sequence SynthID relies on.

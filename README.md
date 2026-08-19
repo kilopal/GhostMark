@@ -37,8 +37,10 @@ Unlike CLI tools or Docker containers that are meant for servers, GhostMark runs
 - ✅ **New:** Offline Grammar & Proofread mode.
 - ✅ **New:** Ollama Mode! Run massive 10B+ parameter models on your local GPU for instant AI inference.
 - ✅ **New:** Multi-Provider BYOK Engine. Use your OpenAI, Gemini, DeepSeek, or Groq API keys to scrub text securely.
+- ✅ **New:** Markdown Support! The chat interface now elegantly renders markdown styling, bold text, lists, and code blocks for all AI engine outputs.
+- ✅ **New:** SynthID Image Scanning! Upload an image and let the Gemini Vision model analyze it for AI-generated visual artifacts and cryptographic signatures.
 - ✅ **New:** ChatGPT-style Sidebar with multi-chat session history saved directly to your browser.
-- ✅ Card-based dark mode UI with structured result cards.
+- ✅ Card-based light mode UI with structured result cards.
 
 ---
 
