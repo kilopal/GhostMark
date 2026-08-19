@@ -348,7 +348,7 @@ export default function App() {
       } else if (llmMode === 'nano') {
          const ai = (window as any).ai;
          if (!ai || !ai.languageModel) {
-             throw new Error("Chrome Nano is not enabled in your browser. Copy and paste 'chrome://flags/#prompt-api-for-gemini-nano' into your URL bar and set it to Enabled. (Note: Browsers prevent these links from being clickable for security reasons)");
+             throw new Error("Chrome Nano is not enabled in your browser. Please enable the flag in chrome://flags/#prompt-api-for-gemini-nano");
          }
          setProcessStatus('Waking up Chrome Nano Engine...');
          const session = await ai.languageModel.create({
