@@ -6,9 +6,11 @@ However, if you want **verifiable proof** that a SynthID watermark was removed f
 
 ## How It Works
 
-Google does not provide a public standard endpoint for SynthID text detection. However, GhostMark uses the `taskType: DETECT_TEXT_WATERMARK` parameter against the standard `gemini-2.5-flash:generateContent` endpoint to officially query the internal SynthID detection model.
+**Text Detection:** Google does not provide a public standard endpoint for SynthID text detection. However, GhostMark uses the `taskType: DETECT_TEXT_WATERMARK` parameter against the standard `gemini-2.5-flash:generateContent` endpoint to officially query the internal SynthID detection model.
 
 If configured, GhostMark will query this endpoint **before** and **after** scrubbing your text, giving you a mathematically accurate Confidence Score of SynthID presence.
+
+**Image Detection (New):** When a user attaches an image with SynthID Detect enabled, GhostMark sends the image via `inlineData` to the `gemini-2.5-flash` vision model. The model is prompted to perform a technical assessment of any visual artifacts, EXIF fingerprints, or SynthID watermarks and returns a two-sentence analysis of its findings alongside the scrubbing process.
 
 ## Setting It Up
 

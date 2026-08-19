@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowUp, Download, FileCode, Globe, Terminal, X, ChevronDown, CheckCircle2, Code2, Trash2, Menu, Bot, Square, RotateCcw, Sun, Moon, Image, FileText } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -213,6 +215,33 @@ export default function App() {
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text }] }],
           generationConfig: { taskType: 'DETECT_TEXT_WATERMARK' }
+        })
+      });
+      if (!res.ok) return "API Error";
+      const data = await res.json();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text || "Unknown";
+    } catch (err) {
+      return "Network Error";
+    }
+  };
+
+  const checkImageSynthId = async (file: File): Promise<string> => {
+    if (!geminiKey) return "";
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const base64 = btoa(new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+      
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ 
+            role: 'user', 
+            parts: [
+              { inlineData: { mimeType: file.type, data: base64 } },
+              { text: "Analyze this image for any AI-generated watermarks, artifacts, or cryptographic signatures like Google SynthID. Provide a short 2-sentence technical assessment of whether it appears AI-generated." }
+            ] 
+          }]
         })
       });
       if (!res.ok) return "API Error";
@@ -437,14 +466,35 @@ export default function App() {
       const cleanedBytes = new Uint8Array(cleanedBuffer);
       const removedBytes = originalLength - cleanedBytes.length;
       
-      updateMessages((prev: Message[]) => [...prev, { 
-        role: 'assistant', 
-        content: `Scrubbed successfully! Removed ${removedBytes} bytes of hidden metadata/tracking data.`,
-        isDownloadable: true,
-        fileName: file.name,
-        fileBytes: cleanedBytes,
-        fileType: file.type
-      }]);
+      let finalContent = `Scrubbed successfully! Removed ${removedBytes} bytes of hidden metadata/tracking data.`;
+      
+      // Perform SynthID image detection if requested and applicable
+      if (useSynthIdDetect && geminiKey && file.type.startsWith('image/')) {
+         finalContent += "\n\n*Analyzing image for AI watermarks...*";
+         updateMessages((prev: Message[]) => [...prev, { 
+           role: 'assistant', 
+           content: finalContent,
+         }]);
+         
+         const synthIdResult = await checkImageSynthId(file);
+         finalContent = `Scrubbed successfully! Removed ${removedBytes} bytes of hidden metadata/tracking data.\n\n**SynthID / AI Vision Analysis:**\n${synthIdResult}`;
+      }
+      
+      // Replace the loading message or add the final download message
+      updateMessages((prev: Message[]) => {
+         const newPrev = [...prev];
+         if (useSynthIdDetect && geminiKey && file.type.startsWith('image/')) {
+             newPrev.pop(); // Remove the temporary loading message
+         }
+         return [...newPrev, { 
+           role: 'assistant', 
+           content: finalContent,
+           isDownloadable: true,
+           fileName: file.name,
+           fileBytes: cleanedBytes,
+           fileType: file.type
+         }];
+      });
     } catch (err: any) {
       updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: `Error processing file: ${err.message}` }]);
     } finally {
@@ -514,17 +564,44 @@ export default function App() {
   };
 
   const renderMessageContent = (content: string) => {
-    if (!content.includes('chrome://')) return content;
-    const parts = content.split(/(chrome:\/\/[\w-./#]+)/g);
     return (
-      <>
-        {parts.map((part, i) => {
-          if (part.startsWith('chrome://')) {
-             return <code key={i} style={{ cursor: 'pointer', textDecoration: 'underline', color: 'var(--text-primary)', background: 'rgba(255,255,255,0.1)', padding: '2px 4px', borderRadius: '4px' }} onClick={(e) => copyToClipboard(part, e as any)} title="Click to copy URL">{part}</code>;
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          p: ({ node, ...props }) => <p style={{ margin: '0 0 1rem 0' }} {...props} />,
+          code({ node, inline, className, children, ...props }: any) {
+            const str = String(children);
+            if (str.startsWith('chrome://')) {
+              return (
+                <code
+                  style={{
+                    cursor: 'pointer', textDecoration: 'underline', color: 'var(--text-primary)',
+                    background: 'rgba(255,255,255,0.1)', padding: '2px 4px', borderRadius: '4px'
+                  }}
+                  onClick={(e) => copyToClipboard(str, e as any)}
+                  title="Click to copy URL"
+                  {...props}
+                >
+                  {children}
+                </code>
+              );
+            }
+            const match = /language-(\w+)/.exec(className || '');
+            return !inline && match ? (
+              <div className="code-block" style={{ margin: '1rem 0', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                 <div style={{ background: 'var(--bg-surface-hover)', padding: '0.5rem 1rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{match[1]}</div>
+                 <pre style={{ margin: 0, padding: '1rem', overflowX: 'auto', background: 'rgba(0,0,0,0.3)' }}>
+                    <code className={className} {...props}>{children}</code>
+                 </pre>
+              </div>
+            ) : (
+              <code style={{ background: 'var(--bg-surface-hover)', padding: '0.2rem 0.4rem', borderRadius: '4px' }} {...props}>{children}</code>
+            );
           }
-          return <span key={i}>{part}</span>;
-        })}
-      </>
+        }}
+      >
+        {content}
+      </ReactMarkdown>
     );
   };
 
