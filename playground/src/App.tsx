@@ -754,34 +754,30 @@ export default function App() {
         {/* Chat Feed */}
         <div className="chat-feed">
           {messages.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-logo">👻</div>
-              <h2>How can I scrub your data today?</h2>
-              <p className="app-description">
+            <div className="empty-state animate-fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', flex: 1, paddingBottom: '10vh' }}>
+              <div className="empty-logo" style={{ marginBottom: '1rem', fontSize: '2rem' }}>👻</div>
+              <h2 style={{ fontSize: '1.75rem', fontWeight: 600, marginBottom: '0.5rem', textAlign: 'center', color: 'var(--text-primary)' }}>How can I scrub your data today?</h2>
+              <p className="app-description" style={{ textAlign: 'center', color: 'var(--text-secondary)', maxWidth: '540px', marginBottom: '2rem', lineHeight: '1.6', fontSize: '0.95rem' }}>
                 GhostMark 👻 A blazing-fast, memory-safe tool written in Rust to strip Anthropic, OpenAI, and EU-mandated AI watermarks (C2PA &amp; Unicode) from text and images.
               </p>
               
-              <div className="suggested-actions">
-                 <button onClick={() => fileInputRef.current?.click()} className="suggest-btn">
-                   <FileCode size={18} />
-                   Scrub a PDF or DOCX
+              <div className="suggested-actions" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', width: '100%', maxWidth: '600px', margin: '0 auto' }}>
+                 <button onClick={() => fileInputRef.current?.click()} className="suggest-btn" style={{ padding: '0.8rem 1rem', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'flex-start', color: 'var(--text-primary)', transition: 'all 0.2s' }}>
+                   <FileCode size={18} color="var(--text-secondary)" />
+                   <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Scrub a Document</span>
                  </button>
-                 <a href="https://github.com/kilopal/GhostMark/tree/main/extension" target="_blank" rel="noreferrer" className="suggest-btn">
-                   <Globe size={18} />
-                   Get Chrome Extension
+                 <a href="https://github.com/kilopal/GhostMark/tree/main/extension" target="_blank" rel="noreferrer" className="suggest-btn" style={{ padding: '0.8rem 1rem', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'flex-start', color: 'var(--text-primary)', transition: 'all 0.2s', textDecoration: 'none' }}>
+                   <Globe size={18} color="var(--text-secondary)" />
+                   <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Browser Extension</span>
                  </a>
-                 <a href="https://github.com/kilopal/GhostMark/tree/main/cli" target="_blank" rel="noreferrer" className="suggest-btn">
-                   <Terminal size={18} />
-                   Use the Rust CLI
+                 <a href="https://github.com/kilopal/GhostMark/tree/main/cli" target="_blank" rel="noreferrer" className="suggest-btn" style={{ padding: '0.8rem 1rem', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'flex-start', color: 'var(--text-primary)', transition: 'all 0.2s', textDecoration: 'none' }}>
+                   <Terminal size={18} color="var(--text-secondary)" />
+                   <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Use the Rust CLI</span>
                  </a>
-                 <a href="https://github.com/kilopal/GhostMark/tree/main/wasm" target="_blank" rel="noreferrer" className="suggest-btn">
-                   <Code2 size={18} />
-                   Developer WASM API
-                 </a>
-                 <a href="https://github.com/kilopal/GhostMark/tree/main/skills/ghostmark-clean" target="_blank" rel="noreferrer" className="suggest-btn">
-                   <Bot size={18} />
-                   Add AI Agent Skill
-                 </a>
+                 <button onClick={() => setShowSettings(true)} className="suggest-btn" style={{ padding: '0.8rem 1rem', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'flex-start', color: 'var(--text-primary)', transition: 'all 0.2s' }}>
+                   <Bot size={18} color="var(--text-secondary)" />
+                   <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Configure Engines</span>
+                 </button>
               </div>
             </div>
           ) : (

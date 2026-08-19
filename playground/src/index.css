@@ -486,9 +486,8 @@ button { font-family: inherit; }
 
 /* Input Area */
 .input-container {
-  padding: 1rem;
-  background: var(--bg-surface);
-  border-top: 1px solid var(--border);
+  padding: 0.5rem 1rem 1rem 1rem;
+  background: transparent;
   width: 100%;
   display: flex; flex-direction: column; align-items: center;
   z-index: 20;
@@ -497,14 +496,14 @@ button { font-family: inherit; }
 .input-wrapper {
   background-color: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 20px;
   padding: 0.5rem 0.75rem;
   display: flex; align-items: flex-end; gap: 0.5rem;
   width: 100%; max-width: 768px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-  transition: border-color 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
-.input-wrapper:focus-within { border-color: var(--border-focus); }
+.input-wrapper:focus-within { border-color: var(--border-focus); box-shadow: 0 6px 16px rgba(0,0,0,0.2); }
 
 .attach-btn {
   background: transparent; border: none; color: var(--text-secondary);
