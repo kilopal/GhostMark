@@ -501,12 +501,31 @@ export default function App() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
-  const copyToClipboard = (text: string, e: React.MouseEvent<HTMLButtonElement>) => {
+  const copyToClipboard = (text: string, e: React.MouseEvent<HTMLElement>) => {
     navigator.clipboard.writeText(text);
     const btn = e.currentTarget;
     const originalHTML = btn.innerHTML;
-    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+    if (btn.tagName === 'BUTTON') {
+      btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+    } else {
+      btn.innerHTML = 'Copied!';
+    }
     setTimeout(() => { btn.innerHTML = originalHTML; }, 2000);
+  };
+
+  const renderMessageContent = (content: string) => {
+    if (!content.includes('chrome://')) return content;
+    const parts = content.split(/(chrome:\/\/[\w-./#]+)/g);
+    return (
+      <>
+        {parts.map((part, i) => {
+          if (part.startsWith('chrome://')) {
+             return <code key={i} style={{ cursor: 'pointer', textDecoration: 'underline', color: 'var(--text-primary)', background: 'rgba(255,255,255,0.1)', padding: '2px 4px', borderRadius: '4px' }} onClick={(e) => copyToClipboard(part, e as any)} title="Click to copy URL">{part}</code>;
+          }
+          return <span key={i}>{part}</span>;
+        })}
+      </>
+    );
   };
 
   // Helper for rendering the engine dropdown name
@@ -779,7 +798,7 @@ export default function App() {
 
                   {/* Message Body */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="prose">{msg.content}</div>
+                    <div className="prose">{renderMessageContent(msg.content)}</div>
                     
                     {/* Assistant Actions */}
                     {msg.role === 'assistant' && (
