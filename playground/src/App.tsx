@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowUp, Download, FileCode, Globe, Terminal, AlertCircle, X, ChevronDown, CheckCircle2, Code2, Trash2, Menu, Bot, Square, RotateCcw, Sun, Moon, Image, FileText } from 'lucide-react';
-import { pipeline, env } from '@huggingface/transformers';
+import { ArrowUp, Download, FileCode, Globe, Terminal, X, ChevronDown, CheckCircle2, Code2, Trash2, Menu, Bot, Square, RotateCcw, Sun, Moon, Image, FileText } from 'lucide-react';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -109,7 +108,7 @@ export default function App() {
   const [useHomoglyphs, setUseHomoglyphs] = useState(true);
   const [useShatterSynthId, setUseShatterSynthId] = useState(false);
   const [useSynthIdDetect, setUseSynthIdDetect] = useState(false);
-  const [llmMode, setLlmMode] = useState<'none' | 'cloud' | 'ollama' | 'webgpu'>('none');
+  const [llmMode, setLlmMode] = useState<'none' | 'cloud' | 'ollama'>('none');
   const [cloudProvider, setCloudProvider] = useState<'groq' | 'openai' | 'gemini' | 'deepseek'>('groq');
   
   const [groqKey, setGroqKey] = useState(localStorage.getItem('ghostmark_groq_key') || '');
@@ -130,9 +129,7 @@ export default function App() {
     localStorage.setItem('ghostmark_ollama_model', ollamaModel);
   }, [groqKey, openaiKey, deepseekKey, geminiKey, ollamaUrl, ollamaModel]);
 
-  // Transformers.js State
-  const [hfPipeline, setHfPipeline] = useState<any>(null);
-  const [hfProgress, setHfProgress] = useState(0);
+
   const [processStatus, setProcessStatus] = useState<string>('Processing...');
 
   // File Upload State
@@ -205,24 +202,7 @@ export default function App() {
     });
   };
 
-  const getParaphraser = async () => {
-    if (hfPipeline) return hfPipeline;
-    env.allowLocalModels = false;
-    env.backends.onnx.wasm!.numThreads = 1;
-    env.backends.onnx.wasm!.proxy = false;
 
-    const pipe = await pipeline('text-generation', 'Xenova/Phi-3-mini-4k-instruct', {
-      dtype: 'q4',
-      device: (navigator as any).gpu ? 'webgpu' : 'wasm',
-      progress_callback: (progress: any) => {
-        if (progress.status === 'progress' && progress.progress) {
-          setHfProgress(Math.round(progress.progress));
-        }
-      }
-    });
-    setHfPipeline(() => pipe);
-    return pipe;
-  };
 
   const checkSynthId = async (text: string): Promise<string> => {
     if (!geminiKey) return "";
@@ -356,57 +336,6 @@ export default function App() {
          if (!res.ok) throw new Error("Ollama server not responding.");
          const data = await res.json();
          currentText = data.response;
-      } else if (llmMode === 'webgpu') {
-         if (window.innerWidth < 768 || /Mobi|Android/i.test(navigator.userAgent)) {
-             throw new Error("WebGPU 3.8B models will crash mobile browsers. Please select Cloud or WASM engine.");
-         }
-         setProcessStatus('Loading 3.8B WebGPU Model into VRAM (Takes ~10-25s)...');
-         const pipe = await getParaphraser();
-         
-         if (controller.signal.aborted) throw new Error("Cancelled by user");
-         
-         setProcessStatus('Scrubbing via WebGPU Neural Network...');
-         // Split into ~400 char chunks. The 1B model is too small to handle
-         // full essays in one shot — it hallucinates. Chunking is what made
-         // the extension achieve 0% AI detection consistently.
-         const rawParagraphs = currentText.split(/\n+/);
-         const chunks: string[] = [];
-         for (const p of rawParagraphs) {
-           if (!p.trim()) continue;
-           if (p.length < 1500) {
-             chunks.push(p.trim());
-           } else {
-             const sentences = p.match(/[^.!?]+[.!?]+/g) || [p];
-             let currentChunk = '';
-             for (const s of sentences) {
-               if ((currentChunk + s).length > 1000 && currentChunk.length > 0) {
-                 chunks.push(currentChunk.trim());
-                 currentChunk = '';
-               }
-               currentChunk += s + ' ';
-             }
-             if (currentChunk.trim().length > 0) chunks.push(currentChunk.trim());
-           }
-         }
-
-         const rewrittenParts: string[] = [];
-         for (const chunk of chunks) {
-           if (controller.signal.aborted) throw new Error("Cancelled by user");
-           const chat = [
-             { role: 'system', content: 'You are an expert editor. Rewrite the user\'s text to sound conversational and human. You MUST preserve the exact same meaning, names, genders, and pronouns (he/she/they) as the original. Output only the rewritten text.' },
-             { role: 'user', content: chunk }
-           ];
-           const result = await pipe(chat, {
-             max_new_tokens: 512,
-             temperature: 0.6,
-             top_p: 0.9,
-             repetition_penalty: 1.05,
-             do_sample: true
-           });
-           const out = result[0].generated_text;
-           rewrittenParts.push(out[out.length - 1].content.trim());
-         }
-         currentText = rewrittenParts.join(' ');
       }
 
       // 3. Post-processing
@@ -557,7 +486,7 @@ export default function App() {
         const names = { groq: 'Groq', openai: 'OpenAI', deepseek: 'DeepSeek', gemini: 'Gemini' };
         return `BYOK (${names[cloudProvider]})`;
       case 'ollama': return 'Local Ollama';
-      case 'webgpu': return 'Local WebGPU 3.8B';
+
     }
   };
 
@@ -700,13 +629,6 @@ export default function App() {
                       <button className={`engine-btn ${llmMode === 'none' ? 'active' : ''}`} onClick={() => setLlmMode('none')}>WASM Only</button>
                       <button className={`engine-btn ${llmMode === 'cloud' ? 'active' : ''}`} onClick={() => setLlmMode('cloud')}>BYOK (Cloud)</button>
                       <button className={`engine-btn ${llmMode === 'ollama' ? 'active' : ''}`} onClick={() => setLlmMode('ollama')}>Ollama (10B)</button>
-                      <button className={`engine-btn ${llmMode === 'webgpu' ? 'active' : ''}`} onClick={() => {
-                        if (window.innerWidth < 768 || /Mobi|Android/i.test(navigator.userAgent)) {
-                          alert("WebGPU 3.8B models require 4GB+ of free RAM and will crash mobile browsers. Please use a desktop device or another engine.");
-                        } else {
-                          setLlmMode('webgpu');
-                        }
-                      }}>WebGPU (3.8B)</button>
                     </div>
                   </div>
 
@@ -747,13 +669,7 @@ export default function App() {
                     </div>
                   )}
 
-                  {llmMode === 'webgpu' && (
-                    <div className="warning-box animate-fade-in">
-                      <AlertCircle size={18} color="var(--text-primary)" style={{ flexShrink: 0 }} />
-                      <p><strong>Heads up:</strong> WebGPU will download a ~2.2GB Phi-3 model into your browser cache on first run. Requires a modern GPU.</p>
-                    </div>
-                  )}
-                  
+
                   <div className="privacy-badge">
                     <CheckCircle2 size={14} color="var(--success)" />
                     <span>100% Local Browser Execution. No data is sent to our servers.</span>
@@ -850,10 +766,7 @@ export default function App() {
                  <div className="avatar assistant pulse-bg">👻</div>
                  <div style={{ flex: 1, minWidth: 0 }}>
                    <div style={{ paddingTop: '6px', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                     {llmMode === 'webgpu' && hfProgress > 0 && hfProgress < 100 
-                        ? `Downloading Model... ${hfProgress}%` 
-                        : <span className="animate-pulse">{processStatus} ({processingTime.toFixed(1)}s)</span>
-                     }
+                     <span className="animate-pulse">{processStatus} ({processingTime.toFixed(1)}s)</span>
                    </div>
                    <div className="msg-actions" style={{ marginTop: '12px' }}>
                      <button onClick={handleStop} className="action-btn" style={{ color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
@@ -875,16 +788,11 @@ export default function App() {
               <div className="toggle-track"></div>
               <span className="toggle-label">WASM Fast</span>
             </label>
-            <label className="toggle-row" title="Rewrite text using WebGPU or Cloud AI APIs">
-              <input type="checkbox" className="toggle-checkbox" checked={llmMode === 'webgpu' || llmMode === 'cloud' || llmMode === 'ollama'} onChange={(e) => {
+            <label className="toggle-row" title="Rewrite text using Cloud AI APIs or local Ollama">
+              <input type="checkbox" className="toggle-checkbox" checked={llmMode === 'cloud' || llmMode === 'ollama'} onChange={(e) => {
                 if (e.target.checked) {
-                  if (window.innerWidth < 768 || /Mobi|Android/i.test(navigator.userAgent)) {
-                    alert("WebGPU 3.8B models require 4GB+ of free RAM and will crash mobile browsers. Defaulting to Cloud Engine.");
-                    setLlmMode('cloud');
-                    setShowSettings(true);
-                  } else {
-                    setLlmMode('webgpu');
-                  }
+                  setLlmMode('cloud');
+                  setShowSettings(true);
                 } else {
                   setLlmMode('none');
                 }
