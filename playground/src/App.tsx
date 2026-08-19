@@ -831,8 +831,9 @@ export default function App() {
         {/* Chat Feed */}
         <div className="chat-feed">
           {messages.length === 0 ? (
-            <div className="empty-state animate-fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', flex: 1, paddingBottom: '10vh' }}>
-              <div className="empty-logo" style={{ marginBottom: '1rem', fontSize: '2rem' }}>👻</div>
+            <div className="empty-state animate-fade-in" style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', flex: 1, padding: '2rem 1rem' }}>
+              <div style={{ margin: 'auto 0', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div className="empty-logo" style={{ marginBottom: '1rem', fontSize: '2rem' }}>👻</div>
               <h2 style={{ fontSize: '1.75rem', fontWeight: 600, marginBottom: '0.5rem', textAlign: 'center', color: 'var(--text-primary)' }}>How can I scrub your data today?</h2>
               <p className="app-description" style={{ textAlign: 'center', color: 'var(--text-secondary)', maxWidth: '540px', marginBottom: '2rem', lineHeight: '1.6', fontSize: '0.95rem' }}>
                 GhostMark 👻 A blazing-fast, memory-safe tool written in Rust to strip Anthropic, OpenAI, and EU-mandated AI watermarks (C2PA &amp; Unicode) from text and images.
@@ -855,6 +856,7 @@ export default function App() {
                    <Bot size={18} color="var(--text-secondary)" />
                    <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Configure Engines</span>
                  </button>
+              </div>
               </div>
             </div>
           ) : (
