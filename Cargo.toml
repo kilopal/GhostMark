@@ -7,7 +7,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.4.0"
+version = "1.0.0"
 edition = "2021"
 authors = ["kilopal"]
 description = "A blazing-fast, memory-safe tool to strip AI provenance watermarks (C2PA & Unicode) from text and images."

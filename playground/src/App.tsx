@@ -140,6 +140,7 @@ export default function App() {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [scanReport, setScanReport] = useState<{c2pa: boolean, unicode: boolean, exif: boolean}>({c2pa: false, unicode: false, exif: false});
   const [scanProgress, setScanProgress] = useState(0);
+  const [scanTime, setScanTime] = useState(0);
   
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -566,7 +567,9 @@ export default function App() {
     // --- Fast-Pass JS Byte Scanner ---
     // Scans the first 256KB of the file in < 5ms for 100% byte-accurate reporting
     let hasC2pa = false, hasExif = false, hasUnicode = false;
+    let timeTaken = 0;
     try {
+      const start = performance.now();
       const slice = file.slice(0, 256 * 1024);
       const buffer = await slice.arrayBuffer();
       const bytes = new Uint8Array(buffer);
@@ -591,13 +594,31 @@ export default function App() {
       } else {
           hasUnicode = findSeq([226, 128, 139]); // \u200B UTF-8
       }
+      timeTaken = performance.now() - start;
     } catch(e) { console.error("Byte scan failed", e); }
 
-    // Animate the real results sequentially
-    setTimeout(() => { setScanProgress(33); setScanReport(r => ({...r, c2pa: hasC2pa})) }, 400);
-    setTimeout(() => { setScanProgress(66); setScanReport(r => ({...r, exif: hasExif})) }, 900);
-    setTimeout(() => { setScanProgress(100); setScanReport(r => ({...r, unicode: hasUnicode})) }, 1400);
+    setScanTime(timeTaken);
+
+    // Rapid progress bar animation (200ms) to show the UI, then reveal real results
+    let currentProgress = 0;
+    const interval = setInterval(() => {
+       currentProgress += 25;
+       setScanProgress(currentProgress);
+       if (currentProgress >= 100) {
+          clearInterval(interval);
+          setScanReport({ c2pa: hasC2pa, exif: hasExif, unicode: hasUnicode });
+       }
+    }, 50);
   };
+
+  useEffect(() => {
+    if (isScanning && scanProgress === 100) {
+      const timer = setTimeout(() => {
+        executeShatter();
+      }, 1200); // Auto-shatter 1.2s after scan hits 100%
+      return () => clearTimeout(timer);
+    }
+  }, [isScanning, scanProgress, pendingFile]);
 
   const downloadFile = (bytes: Uint8Array, originalName: string, type: string) => {
     const blob = new Blob([bytes as any], { type });
@@ -910,56 +931,63 @@ export default function App() {
         <div className="chat-feed">
           {isScanning ? (
             <div className="xray-dashboard animate-fade-in" style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '2rem', margin: 'auto 0', alignItems: 'center', justifyContent: 'center' }}>
-              <div className="xray-container" style={{ width: '100%', maxWidth: '500px', background: '#0a0a0a', border: '1px solid #333', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 0 30px rgba(255, 0, 0, 0.1)' }}>
+              <div className="xray-container" style={{ width: '100%', maxWidth: '500px', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 15px rgba(0, 0, 0, 0.03)' }}>
                 
-                <div className="xray-header" style={{ padding: '1rem', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#111' }}>
+                <div className="xray-header" style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-surface-hover)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div className={`status-dot ${scanProgress < 100 ? 'pulse' : ''}`} style={{ width: '8px', height: '8px', borderRadius: '50%', background: scanProgress < 100 ? '#eab308' : '#ef4444' }}></div>
-                    <span style={{ color: '#fff', fontSize: '0.9rem', fontWeight: 600, fontFamily: 'monospace' }}>
-                      {scanProgress < 100 ? 'ANALYZING FILE...' : 'TRACKING SIGNATURES DETECTED'}
+                    <div className={`status-dot ${scanProgress < 100 ? 'pulse' : ''}`} style={{ width: '8px', height: '8px', borderRadius: '50%', background: scanProgress < 100 ? '#3b82f6' : (scanReport.c2pa || scanReport.exif || scanReport.unicode ? 'var(--danger)' : 'var(--success)') }}></div>
+                    <span style={{ color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 600, fontFamily: 'monospace' }}>
+                      {scanProgress < 100 ? 'FAST-PASS BYTE SCAN' : 'PRE-SCRUB ANALYSIS COMPLETE'}
                     </span>
                   </div>
-                  <span style={{ color: '#666', fontSize: '0.8rem', fontFamily: 'monospace' }}>{pendingFile?.name}</span>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontFamily: 'monospace' }}>
+                    {scanProgress < 100 ? '...' : `${scanTime.toFixed(1)}ms`}
+                  </span>
                 </div>
                 
-                <div className="xray-body" style={{ padding: '1.5rem', position: 'relative' }}>
-                  {scanProgress < 100 && (
-                    <div className="scanline"></div>
-                  )}
+                <div className="xray-body" style={{ padding: '1.25rem' }}>
+                  <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '70%' }}>Target: {pendingFile?.name}</span>
+                    <span>Depth: 256KB</span>
+                  </div>
                   
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div className="xray-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: '#1a1a1a', borderRadius: '8px', border: scanReport.c2pa ? '1px solid #ef4444' : '1px solid #333', transition: 'all 0.3s' }}>
-                      <span style={{ color: '#aaa', fontSize: '0.9rem', fontFamily: 'monospace' }}>C2PA Cryptographic Signature</span>
-                      {scanReport.c2pa ? <span style={{ color: '#ef4444', fontSize: '0.8rem', fontWeight: 'bold' }}>DETECTED</span> : <span style={{ color: '#444', fontSize: '0.8rem' }}>SCANNING...</span>}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--bg-base)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>0x63327061 (C2PA)</span>
+                      {scanProgress < 100 ? <span style={{ color: 'var(--text-muted)' }}>SCANNING...</span> : (scanReport.c2pa ? <span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>DETECTED</span> : <span style={{ color: 'var(--success)' }}>CLEAN</span>)}
                     </div>
                     
-                    <div className="xray-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: '#1a1a1a', borderRadius: '8px', border: scanReport.exif ? '1px solid #ef4444' : '1px solid #333', transition: 'all 0.3s' }}>
-                      <span style={{ color: '#aaa', fontSize: '0.9rem', fontFamily: 'monospace' }}>EXIF & Device Geolocation</span>
-                      {scanReport.exif ? <span style={{ color: '#ef4444', fontSize: '0.8rem', fontWeight: 'bold' }}>DETECTED</span> : <span style={{ color: '#444', fontSize: '0.8rem' }}>SCANNING...</span>}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--bg-base)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>0x45786966 (EXIF)</span>
+                      {scanProgress < 100 ? <span style={{ color: 'var(--text-muted)' }}>SCANNING...</span> : (scanReport.exif ? <span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>DETECTED</span> : <span style={{ color: 'var(--success)' }}>CLEAN</span>)}
                     </div>
                     
-                    <div className="xray-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: '#1a1a1a', borderRadius: '8px', border: scanReport.unicode ? '1px solid #ef4444' : '1px solid #333', transition: 'all 0.3s' }}>
-                      <span style={{ color: '#aaa', fontSize: '0.9rem', fontFamily: 'monospace' }}>Zero-Width Unicode Steganography</span>
-                      {scanReport.unicode ? <span style={{ color: '#ef4444', fontSize: '0.8rem', fontWeight: 'bold' }}>DETECTED</span> : <span style={{ color: '#444', fontSize: '0.8rem' }}>SCANNING...</span>}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--bg-base)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>0xE2808B (ZWSP)</span>
+                      {scanProgress < 100 ? <span style={{ color: 'var(--text-muted)' }}>SCANNING...</span> : (scanReport.unicode ? <span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>DETECTED</span> : <span style={{ color: 'var(--success)' }}>CLEAN</span>)}
                     </div>
                   </div>
                   
                   <div style={{ marginTop: '1.5rem' }}>
-                    <button 
-                      onClick={executeShatter}
-                      disabled={scanProgress < 100}
-                      className="shatter-btn"
-                      style={{
-                        width: '100%', padding: '14px', borderRadius: '8px', fontSize: '1rem', fontWeight: 'bold', fontFamily: 'monospace',
-                        background: scanProgress < 100 ? '#333' : '#ef4444', 
-                        color: scanProgress < 100 ? '#666' : '#fff',
-                        border: 'none', cursor: scanProgress < 100 ? 'not-allowed' : 'pointer',
-                        transition: 'all 0.3s',
-                        boxShadow: scanProgress === 100 ? '0 0 20px rgba(239, 68, 68, 0.4)' : 'none'
-                      }}
-                    >
-                      {scanProgress < 100 ? `${scanProgress}% SCANNED` : 'SHATTER WATERMARKS'}
-                    </button>
+                    {scanProgress < 100 ? (
+                       <div style={{ width: '100%', height: '4px', background: 'var(--border)', borderRadius: '2px', overflow: 'hidden' }}>
+                          <div style={{ width: `${scanProgress}%`, height: '100%', background: '#3b82f6', transition: 'width 0.05s linear' }}></div>
+                       </div>
+                    ) : (
+                      <button 
+                        onClick={executeShatter}
+                        className="shatter-btn"
+                        style={{
+                          width: '100%', padding: '12px', borderRadius: '6px', fontSize: '0.9rem', fontWeight: 'bold', fontFamily: 'var(--font-sans)',
+                          background: (scanReport.c2pa || scanReport.exif || scanReport.unicode) ? 'var(--danger)' : 'var(--text-primary)', 
+                          color: (scanReport.c2pa || scanReport.exif || scanReport.unicode) ? '#fff' : 'var(--bg-surface)',
+                          border: 'none', cursor: 'pointer',
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        SHATTER WATERMARKS
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
