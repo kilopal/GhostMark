@@ -108,7 +108,7 @@ export default function App() {
   const [useHomoglyphs, setUseHomoglyphs] = useState(true);
   const [useShatterSynthId, setUseShatterSynthId] = useState(false);
   const [useSynthIdDetect, setUseSynthIdDetect] = useState(false);
-  const [llmMode, setLlmMode] = useState<'none' | 'cloud' | 'ollama'>('none');
+  const [llmMode, setLlmMode] = useState<'none' | 'cloud' | 'ollama' | 'nano'>('none');
   const [cloudProvider, setCloudProvider] = useState<'groq' | 'openai' | 'gemini' | 'deepseek'>('groq');
   
   const [groqKey, setGroqKey] = useState(localStorage.getItem('ghostmark_groq_key') || '');
@@ -336,6 +336,28 @@ export default function App() {
          if (!res.ok) throw new Error("Ollama server not responding.");
          const data = await res.json();
          currentText = data.response;
+      } else if (llmMode === 'nano') {
+         const ai = (window as any).ai;
+         if (!ai || !ai.languageModel) {
+             throw new Error("Chrome Nano is not enabled in your browser. Please enable the #prompt-api-for-gemini-nano flag in chrome://flags.");
+         }
+         setProcessStatus('Waking up Chrome Nano Engine...');
+         const session = await ai.languageModel.create({
+             systemPrompt: 'You are an expert editor. Rewrite the user\'s text to sound conversational and human. You MUST preserve the exact same meaning, names, genders, and pronouns as the original. Output only the rewritten text.'
+         });
+         
+         if (controller.signal.aborted) throw new Error("Cancelled by user");
+         
+         setProcessStatus('Scrubbing via Chrome Built-in AI...');
+         const rawParagraphs = currentText.split(/\n+/);
+         const rewrittenParts: string[] = [];
+         for (const p of rawParagraphs) {
+            if (!p.trim()) continue;
+            if (controller.signal.aborted) throw new Error("Cancelled by user");
+            const result = await session.prompt(p);
+            rewrittenParts.push(result.trim());
+         }
+         currentText = rewrittenParts.join('\n\n');
       }
 
       // 3. Post-processing
@@ -486,6 +508,7 @@ export default function App() {
         const names = { groq: 'Groq', openai: 'OpenAI', deepseek: 'DeepSeek', gemini: 'Gemini' };
         return `BYOK (${names[cloudProvider]})`;
       case 'ollama': return 'Local Ollama';
+      case 'nano': return 'Chrome Nano Local';
 
     }
   };
@@ -629,6 +652,7 @@ export default function App() {
                       <button className={`engine-btn ${llmMode === 'none' ? 'active' : ''}`} onClick={() => setLlmMode('none')}>WASM Only</button>
                       <button className={`engine-btn ${llmMode === 'cloud' ? 'active' : ''}`} onClick={() => setLlmMode('cloud')}>BYOK (Cloud)</button>
                       <button className={`engine-btn ${llmMode === 'ollama' ? 'active' : ''}`} onClick={() => setLlmMode('ollama')}>Ollama (10B)</button>
+                      <button className={`engine-btn ${llmMode === 'nano' ? 'active' : ''}`} onClick={() => setLlmMode('nano')}>Chrome Nano</button>
                     </div>
                   </div>
 
@@ -788,8 +812,8 @@ export default function App() {
               <div className="toggle-track"></div>
               <span className="toggle-label">WASM Fast</span>
             </label>
-            <label className="toggle-row" title="Rewrite text using Cloud AI APIs or local Ollama">
-              <input type="checkbox" className="toggle-checkbox" checked={llmMode === 'cloud' || llmMode === 'ollama'} onChange={(e) => {
+            <label className="toggle-row" title="Rewrite text using Cloud AI APIs, local Ollama, or Chrome Nano">
+              <input type="checkbox" className="toggle-checkbox" checked={llmMode === 'cloud' || llmMode === 'ollama' || llmMode === 'nano'} onChange={(e) => {
                 if (e.target.checked) {
                   setLlmMode('cloud');
                   setShowSettings(true);
