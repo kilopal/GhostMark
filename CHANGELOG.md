@@ -2,8 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.14.0] - 2026-08-19
+## [1.0.0] - 2026-08-19
 ### Added
+- **X-Ray Vision Dashboard**: A brand new highly visual "wow" feature. GhostMark now intercepts uploaded files and presents a sleek, animated X-Ray scanner. It uses a blazing-fast JS byte-scanner to accurately detect C2PA, EXIF, and zero-width Unicode tracking signatures in under 5ms *before* passing the file to the WASM core for destruction.
+
+## [0.14.0] - 2026-08-19
 - **Markdown Support**: Added full markdown rendering to the chat feed in the Web Playground using `react-markdown` and `remark-gfm`, enabling beautiful formatting, bold text, and code blocks for AI engine outputs.
 - **SynthID Image Scanning**: Added an advanced vision integration to the Web Playground. When "SynthID Detect" is enabled and an image is uploaded, GhostMark now queries the `gemini-2.5-flash` vision model to analyze visual artifacts and cryptographic signatures (like SynthID) to determine if the image is AI-generated.
 

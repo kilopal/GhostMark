@@ -747,3 +747,55 @@ button { font-family: inherit; }
     font-size: 0.95rem;
   }
 }
+
+/* X-Ray Dashboard Animations */
+.xray-container {
+  position: relative;
+}
+
+.xray-container::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: 
+    linear-gradient(rgba(255, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 0, 0, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.scanline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: rgba(239, 68, 68, 0.8);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+  opacity: 0.5;
+  animation: scan 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  z-index: 10;
+}
+
+@keyframes scan {
+  0% { top: 0%; opacity: 0.8; }
+  50% { top: 100%; opacity: 0.2; }
+  100% { top: 0%; opacity: 0.8; }
+}
+
+@keyframes pulse-dot {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.5; box-shadow: 0 0 10px currentColor; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.pulse {
+  animation: pulse-dot 1s infinite;
+}
+
+.shatter-btn:hover:not(:disabled) {
+  background: #dc2626 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 25px rgba(239, 68, 68, 0.6) !important;
+}

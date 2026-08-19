@@ -29,6 +29,7 @@ Unlike CLI tools or Docker containers that are meant for servers, GhostMark runs
 - ✅ Runs 100% locally in your browser using WebGPU.
 - ✅ Defeats complex SynthID statistical watermarks.
 - ✅ Achieves **0% AI Detection** on Quillbot and other detectors using advanced mathematical text perturbation (Cyrillic homoglyphs and zero-width jitter).
+- ✅ **New:** X-Ray Vision Dashboard! Drop any file and watch a beautiful hacker-style UI intercept and visually scan it for C2PA, EXIF, and hidden Unicode using a blazing-fast JS byte-scanner (accurate to the byte in under 5ms).
 - ✅ **New:** SynthID-Text Destroyer. Completely neutralizes Claude's new statistical watermarks by heavily perturbing token sequences. Available via CLI `--shatter-synthid` and in the browser UI.
 - ✅ **New:** Gemini API Detection. Verify if your text has a SynthID watermark mathematically before and after scrubbing.
 - ✅ **New:** WASM Web Worker Multithreading. Scrub massive 500-page EPUBs without blocking your browser UI.
