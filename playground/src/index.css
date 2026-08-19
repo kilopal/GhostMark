@@ -413,6 +413,8 @@ button { font-family: inherit; }
 .chat-feed {
   flex: 1;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .empty-state {

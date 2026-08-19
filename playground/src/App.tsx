@@ -851,10 +851,9 @@ export default function App() {
           {messages.length === 0 ? (
             <div className="empty-state animate-fade-in" style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', flex: 1, padding: '2rem 1rem' }}>
               <div style={{ margin: 'auto 0', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <div className="empty-logo" style={{ marginBottom: '1rem', fontSize: '2rem' }}>👻</div>
-              <h2 style={{ fontSize: '1.75rem', fontWeight: 600, marginBottom: '0.5rem', textAlign: 'center', color: 'var(--text-primary)' }}>How can I scrub your data today?</h2>
+              <h2 style={{ fontSize: '1.75rem', fontWeight: 600, marginBottom: '0.5rem', textAlign: 'center', color: 'var(--text-primary)' }}>Shatter AI Watermarks & Cryptographic Tracking</h2>
               <p className="app-description" style={{ textAlign: 'center', color: 'var(--text-secondary)', maxWidth: '540px', marginBottom: '2rem', lineHeight: '1.6', fontSize: '0.95rem' }}>
-                GhostMark 👻 A blazing-fast, memory-safe tool written in Rust to strip Anthropic, OpenAI, and EU-mandated AI watermarks (C2PA &amp; Unicode) from text and images.
+                GhostMark 👻 is a high-performance Rust engine that mathematically strips OpenAI, Anthropic, and EU-mandated C2PA signatures directly in your browser. 100% client-side execution. Your files never leave your device.
               </p>
               </div>
             </div>
