@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowUp, Download, FileCode, Globe, Terminal, X, ChevronDown, CheckCircle2, Code2, Trash2, Menu, Bot, Square, RotateCcw, Sun, Moon, Image, FileText } from 'lucide-react';
+import { ArrowUp, Download, FileCode, Globe, Terminal, X, ChevronDown, CheckCircle2, Code2, Trash2, Menu, Square, RotateCcw, Sun, Moon, Image, FileText } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
