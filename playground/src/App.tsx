@@ -56,8 +56,8 @@ export default function App() {
       let currentSession = prev.find(s => s.id === currentId);
       
       if (!currentSession) {
-         currentId = Date.now().toString() + Math.random().toString().slice(2, 6);
-         currentSession = { id: currentId, title: 'New Chat', messages: [], updatedAt: Date.now() };
+         currentId = currentId || Date.now().toString() + Math.random().toString().slice(2, 6);
+         currentSession = { id: currentId as string, title: 'New Chat', messages: [], updatedAt: Date.now() };
          activeSessionIdRef.current = currentId;
       }
 
@@ -224,9 +224,18 @@ export default function App() {
   };
 
   const handleProcessText = async (overrideText?: string) => {
-    const currentSessionId = activeSessionIdRef.current;
+    let currentSessionId = activeSessionIdRef.current;
     const textToProcess = overrideText || inputText;
-    if (!textToProcess.trim() || !currentSessionId || processingSessions[currentSessionId]) return;
+    
+    if (!textToProcess.trim()) return;
+    
+    if (!currentSessionId) {
+       currentSessionId = Date.now().toString() + Math.random().toString().slice(2, 6);
+       setActiveSessionId(currentSessionId);
+       activeSessionIdRef.current = currentSessionId;
+    }
+
+    if (processingSessions[currentSessionId]) return;
     
     if (!overrideText) {
       setInputText('');
