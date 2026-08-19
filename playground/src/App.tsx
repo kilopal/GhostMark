@@ -348,7 +348,7 @@ export default function App() {
       } else if (llmMode === 'nano') {
          const ai = (window as any).ai;
          if (!ai || !ai.languageModel) {
-             throw new Error("Chrome Nano is not enabled in your browser. Please enable the #prompt-api-for-gemini-nano flag in chrome://flags.");
+             throw new Error("Chrome Nano is not enabled in your browser. Copy and paste 'chrome://flags/#prompt-api-for-gemini-nano' into your URL bar and set it to Enabled. (Note: Browsers prevent these links from being clickable for security reasons)");
          }
          setProcessStatus('Waking up Chrome Nano Engine...');
          const session = await ai.languageModel.create({
@@ -702,6 +702,17 @@ export default function App() {
                     </div>
                   )}
 
+                  {llmMode === 'nano' && (
+                    <div className="warning-box animate-fade-in" style={{ fontSize: '0.85rem' }}>
+                      <p style={{ marginBottom: '6px', color: 'var(--text-primary)' }}><strong>Chrome Nano Setup (Experimental)</strong></p>
+                      <ol style={{ paddingLeft: '1.2rem', margin: 0, color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <li>Paste <code>chrome://flags/#prompt-api-for-gemini-nano</code> into URL bar &rarr; <strong>Enabled</strong>.</li>
+                        <li>Paste <code>chrome://flags/#optimization-guide-on-device-model</code> into URL bar &rarr; <strong>Enabled BypassPerfRequirement</strong>.</li>
+                        <li>Click Relaunch Chrome.</li>
+                        <li>Go to <code>chrome://components</code>, find <strong>Optimization Guide On Device Model</strong>, and click <strong>Check for update</strong>.</li>
+                      </ol>
+                    </div>
+                  )}
 
                   <div className="privacy-badge">
                     <CheckCircle2 size={14} color="var(--success)" />
