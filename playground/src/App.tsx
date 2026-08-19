@@ -814,6 +814,24 @@ export default function App() {
                     </div>
                   )}
 
+                  <div className="setting-group animate-fade-in" style={{ borderTop: '1px solid var(--border-light)', paddingTop: '15px' }}>
+                    <label className="select-label" style={{ marginBottom: '10px' }}>Resources & Links</label>
+                    <div style={{ display: 'grid', gap: '8px' }}>
+                      <button onClick={() => { setShowSettings(false); fileInputRef.current?.click(); }} className="suggest-btn" style={{ padding: '0.6rem 1rem', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'flex-start', color: 'var(--text-primary)', transition: 'all 0.2s', width: '100%' }}>
+                        <FileCode size={16} color="var(--text-secondary)" />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>Scrub a Document</span>
+                      </button>
+                      <a href="https://github.com/kilopal/GhostMark/tree/main/extension" target="_blank" rel="noreferrer" className="suggest-btn" style={{ padding: '0.6rem 1rem', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'flex-start', color: 'var(--text-primary)', transition: 'all 0.2s', textDecoration: 'none', width: '100%' }}>
+                        <Globe size={16} color="var(--text-secondary)" />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>Browser Extension</span>
+                      </a>
+                      <a href="https://github.com/kilopal/GhostMark/tree/main/cli" target="_blank" rel="noreferrer" className="suggest-btn" style={{ padding: '0.6rem 1rem', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'flex-start', color: 'var(--text-primary)', transition: 'all 0.2s', textDecoration: 'none', width: '100%' }}>
+                        <Terminal size={16} color="var(--text-secondary)" />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>Use the Rust CLI</span>
+                      </a>
+                    </div>
+                  </div>
+
                   <div className="privacy-badge">
                     <CheckCircle2 size={14} color="var(--success)" />
                     <span>100% Local Browser Execution. No data is sent to our servers.</span>
@@ -838,25 +856,6 @@ export default function App() {
               <p className="app-description" style={{ textAlign: 'center', color: 'var(--text-secondary)', maxWidth: '540px', marginBottom: '2rem', lineHeight: '1.6', fontSize: '0.95rem' }}>
                 GhostMark 👻 A blazing-fast, memory-safe tool written in Rust to strip Anthropic, OpenAI, and EU-mandated AI watermarks (C2PA &amp; Unicode) from text and images.
               </p>
-              
-              <div className="suggested-actions" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', width: '100%', maxWidth: '600px', margin: '0 auto' }}>
-                 <button onClick={() => fileInputRef.current?.click()} className="suggest-btn" style={{ padding: '0.8rem 1rem', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'flex-start', color: 'var(--text-primary)', transition: 'all 0.2s' }}>
-                   <FileCode size={18} color="var(--text-secondary)" />
-                   <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Scrub a Document</span>
-                 </button>
-                 <a href="https://github.com/kilopal/GhostMark/tree/main/extension" target="_blank" rel="noreferrer" className="suggest-btn" style={{ padding: '0.8rem 1rem', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'flex-start', color: 'var(--text-primary)', transition: 'all 0.2s', textDecoration: 'none' }}>
-                   <Globe size={18} color="var(--text-secondary)" />
-                   <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Browser Extension</span>
-                 </a>
-                 <a href="https://github.com/kilopal/GhostMark/tree/main/cli" target="_blank" rel="noreferrer" className="suggest-btn" style={{ padding: '0.8rem 1rem', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'flex-start', color: 'var(--text-primary)', transition: 'all 0.2s', textDecoration: 'none' }}>
-                   <Terminal size={18} color="var(--text-secondary)" />
-                   <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Use the Rust CLI</span>
-                 </a>
-                 <button onClick={() => setShowSettings(true)} className="suggest-btn" style={{ padding: '0.8rem 1rem', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'flex-start', color: 'var(--text-primary)', transition: 'all 0.2s' }}>
-                   <Bot size={18} color="var(--text-secondary)" />
-                   <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Configure Engines</span>
-                 </button>
-              </div>
               </div>
             </div>
           ) : (
