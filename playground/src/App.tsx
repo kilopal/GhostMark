@@ -140,6 +140,7 @@ export default function App() {
   const [isHoveringFile, setIsHoveringFile] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const pendingFileDataRef = useRef<ArrayBuffer | string | null>(null);
   const [scanReport, setScanReport] = useState<{c2pa: boolean, unicode: boolean, exif: boolean}>({c2pa: false, unicode: false, exif: false});
   const [scanProgress, setScanProgress] = useState(0);
   const [scanTime, setScanTime] = useState(0);
@@ -457,7 +458,7 @@ export default function App() {
     }
   };
 
-  const processFile = async (file: File) => {
+  const processFile = async (file: File, preloadedBuffer?: ArrayBuffer) => {
     if (!wasmWorker) return;
     const currentSessionId = activeSessionIdRef.current;
     if (!currentSessionId) return;
@@ -466,7 +467,7 @@ export default function App() {
     setProcessingSessions(prev => ({ ...prev, [currentSessionId]: true }));
     
     try {
-      const arrayBuffer = await file.arrayBuffer();
+      const arrayBuffer = preloadedBuffer || await file.arrayBuffer();
       const originalLength = arrayBuffer.byteLength;
       
       const cleanedBuffer = await runWasmWorker('strip_file', arrayBuffer, file.name);
@@ -526,13 +527,13 @@ export default function App() {
     }
     
     if (['png', 'jpeg', 'jpg', 'webp', 'bmp', 'gif', 'pdf', 'docx', 'epub', 'odt', 'svg'].includes(ext || '')) {
-      await processFile(file);
+      await processFile(file, pendingFileDataRef.current as ArrayBuffer);
     } else if (['txt', 'md', 'json'].includes(ext || '')) {
       if (!currentSessionId) return;
       
       try {
          setProcessingSessions(prev => ({ ...prev, [currentSessionId]: true }));
-         const text = await file.text();
+         const text = (pendingFileDataRef.current as string) || await file.text();
          const cleaned = await runWasmWorker('sanitize_text', text);
          const encoder = new TextEncoder();
          const cleanedBytes = encoder.encode(cleaned);
@@ -568,44 +569,48 @@ export default function App() {
 
     // Trigger X-Ray Intercept
     setPendingFile(file);
+    pendingFileDataRef.current = null;
     setIsScanning(true);
     setScanProgress(0);
     setScanReport({c2pa: false, unicode: false, exif: false});
 
     updateMessages((prev: Message[]) => [...prev, { role: 'user', content: `Attached File: ${file.name}` }]);
 
-    // --- Fast-Pass JS Byte Scanner ---
-    // Scans the first 256KB of the file in < 5ms for 100% byte-accurate reporting
+    // --- Fast-Pass JS Byte Scanner & Eager File Load ---
+    // Reads the entire file eagerly to prevent Android Chrome NotReadableError (revoked permissions during animation)
     let hasC2pa = false, hasExif = false, hasUnicode = false;
     let timeTaken = 0;
     try {
       const start = performance.now();
-      const slice = file.slice(0, 256 * 1024);
-      const buffer = await slice.arrayBuffer();
-      const bytes = new Uint8Array(buffer);
-      
-      const findSeq = (seq: number[]) => {
-          for (let i = 0; i <= bytes.length - seq.length; i++) {
-              let match = true;
-              for (let j = 0; j < seq.length; j++) {
-                  if (bytes[i + j] !== seq[j]) { match = false; break; }
-              }
-              if (match) return true;
-          }
-          return false;
-      };
-
-      hasC2pa = findSeq([99, 50, 112, 97]) || findSeq([106, 117, 109, 98, 102]); // 'c2pa' or 'jumbf'
-      hasExif = findSeq([69, 120, 105, 102]); // 'Exif'
       
       if (isText) {
           const text = await file.text();
+          pendingFileDataRef.current = text;
           hasUnicode = text.includes('\u200B') || text.includes('\u200C') || text.includes('\u200D');
       } else {
+          const buffer = await file.arrayBuffer();
+          pendingFileDataRef.current = buffer;
+          const bytes = new Uint8Array(buffer);
+          
+          const findSeq = (seq: number[]) => {
+              // Only scan first 256KB for performance
+              const limit = Math.min(bytes.length - seq.length, 256 * 1024);
+              for (let i = 0; i <= limit; i++) {
+                  let match = true;
+                  for (let j = 0; j < seq.length; j++) {
+                      if (bytes[i + j] !== seq[j]) { match = false; break; }
+                  }
+                  if (match) return true;
+              }
+              return false;
+          };
+
+          hasC2pa = findSeq([99, 50, 112, 97]) || findSeq([106, 117, 109, 98, 102]); // 'c2pa' or 'jumbf'
+          hasExif = findSeq([69, 120, 105, 102]); // 'Exif'
           hasUnicode = findSeq([226, 128, 139]); // \u200B UTF-8
       }
       timeTaken = performance.now() - start;
-    } catch(e) { console.error("Byte scan failed", e); }
+    } catch(e) { console.error("Byte scan / File read failed", e); }
 
     setScanTime(timeTaken);
 
