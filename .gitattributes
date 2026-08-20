@@ -3,3 +3,7 @@ extension/transformers.min.js linguist-vendored
 
 # Ignore generated WASM glue code
 playground/src/pkg/* linguist-generated
+
+# Ignore frontend code for GitHub language stats to show this as a Pure Rust project
+playground/** linguist-vendored
+extension/** linguist-vendored
