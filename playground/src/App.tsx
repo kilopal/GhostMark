@@ -38,6 +38,10 @@ export default function App() {
   const activeSessionIdRef = useRef<string | null>(activeSessionId);
 
   useEffect(() => {
+    activeSessionIdRef.current = activeSessionId;
+  }, [activeSessionId]);
+
+  useEffect(() => {
     const savable = sessions.map(s => ({
        ...s,
        messages: s.messages.map((m: Message) => ({ ...m, fileBytes: undefined }))
