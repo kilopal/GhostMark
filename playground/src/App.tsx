@@ -458,6 +458,15 @@ export default function App() {
     }
   };
 
+  const readFileAsArrayBuffer = (f: File): Promise<ArrayBuffer> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as ArrayBuffer);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsArrayBuffer(f);
+    });
+  };
+
   const processFile = async (file: File, preloadedBuffer?: ArrayBuffer) => {
     if (!wasmWorker) return;
     const currentSessionId = activeSessionIdRef.current;
@@ -467,7 +476,7 @@ export default function App() {
     setProcessingSessions(prev => ({ ...prev, [currentSessionId]: true }));
     
     try {
-      const arrayBuffer = preloadedBuffer || await file.arrayBuffer();
+      const arrayBuffer = preloadedBuffer || await readFileAsArrayBuffer(file);
       const originalLength = arrayBuffer.byteLength;
       
       const cleanedBuffer = await runWasmWorker('strip_file', arrayBuffer, file.name);
@@ -588,7 +597,7 @@ export default function App() {
           pendingFileDataRef.current = text;
           hasUnicode = text.includes('\u200B') || text.includes('\u200C') || text.includes('\u200D');
       } else {
-          const buffer = await file.arrayBuffer();
+          const buffer = await readFileAsArrayBuffer(file);
           pendingFileDataRef.current = buffer;
           const bytes = new Uint8Array(buffer);
           
