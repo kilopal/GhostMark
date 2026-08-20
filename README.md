@@ -72,7 +72,7 @@ Check out the **[GhostMark Web Playground](https://ghostmarks.vercel.app)** — 
 | **Speed** | Sub-millisecond text scrubbing | Seconds per file |
 | **Browser Extension** | ✅ Chrome/Edge Extension | ❌ CLI only |
 | **Web Playground** | ✅ [ghostmarks.vercel.app](https://ghostmarks.vercel.app) | ❌ None |
-| **In-Browser AI** | ✅ 3.8B WebGPU model, zero cloud | ❌ Requires external model server |
+| **In-Browser AI** | ✅ Chrome Nano AI model, zero cloud | ❌ Requires external model server |
 | **API Keys Required** | ❌ None (optional for detection) | Often required |
 | **Memory Safety** | ✅ Rust guarantees | ❌ Python runtime |
 
@@ -101,8 +101,8 @@ Check out the **[GhostMark Web Playground](https://ghostmarks.vercel.app)** — 
 ### Layer 1: Fast WASM Normalization (Multithreaded)
 Uses an ultra-fast local WebAssembly (Rust) engine running in a dedicated Web Worker to instantly strip Unicode trickery, zero-width spaces, and homoglyphs from incoming text. It executes in roughly ~2ms directly on your CPU without freezing your browser, even for 500-page EPUB books.
 
-### Layer 2: Deep Statistical Scrub (WebGPU Transformers.js)
-Uses `@huggingface/transformers` with Microsoft's `Phi-3-mini-4k-instruct` (3.8 Billion parameters) via WebGPU to paraphrase text entirely on your local machine. It heavily rewrites the semantic structure and uses mathematically tuned sampling (high temperature, top_p, and burstiness prompting) to destroy statistical cryptographic token watermarks (like Claude's SynthID) while preserving your content.
+### Layer 2: Deep Statistical Scrub (Chrome Nano AI)
+Uses Chrome's experimental native `window.ai` (Gemini Nano) to paraphrase text entirely on your local machine. It heavily rewrites the semantic structure and uses mathematically tuned prompt injections to destroy statistical cryptographic token watermarks (like Claude's SynthID) while preserving your content. Since the model is built directly into the browser, there is zero initial download overhead and zero GPU VRAM locking.
 
 ### Layer 3: Homoglyph Perturbation
 After rewriting, GhostMark injects invisible mathematical perturbations: 15% of English characters are swapped with visually identical Cyrillic homoglyphs, and zero-width non-joiners are sprinkled throughout. This completely shatters AI detection tokenizers (e.g., Quillbot), ensuring a pristine 0% AI score.
