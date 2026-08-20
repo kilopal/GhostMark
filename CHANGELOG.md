@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1] - 2026-08-20
+### Changed
+- **X-Ray UX Improvements**: Upgraded the X-Ray UI to render as a permanent timeline card within the chat history instead of an ephemeral overlay.
+- **Visual Polish**: Replaced markdown emoji headers with native Lucide icons (`ShieldCheck`) for a sleeker final output report.
+- **Clutter Reduction**: Removed redundant "Actions Performed" bullets from the final markdown report, as the X-Ray card now permanently tracks that information.
+
 ## [1.0.0] - 2026-08-19
 ### Added
 - **X-Ray Vision Dashboard**: A brand new highly visual "wow" feature. GhostMark now intercepts uploaded files and presents a sleek, animated X-Ray scanner. It uses a blazing-fast JS byte-scanner to accurately detect C2PA, EXIF, and zero-width Unicode tracking signatures in under 5ms *before* passing the file to the WASM core for destruction.

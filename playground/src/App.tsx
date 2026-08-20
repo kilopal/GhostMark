@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowUp, Download, FileCode, Globe, Terminal, X, ChevronDown, CheckCircle2, Code2, Trash2, Menu, Square, RotateCcw, Sun, Moon, Image, FileText } from 'lucide-react';
+import { ArrowUp, Download, FileCode, Globe, Terminal, X, ChevronDown, CheckCircle2, Code2, Trash2, Menu, Square, RotateCcw, Sun, Moon, Image, FileText, ShieldCheck } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 type Message = {
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'xray';
   content: string;
   isScrubbing?: boolean;
   isDownloadable?: boolean;
   fileName?: string;
   fileBytes?: Uint8Array;
   fileType?: string;
+  xrayReport?: { c2pa: boolean, unicode: boolean, exif: boolean };
+  xrayTime?: number;
 };
 
 type Session = {
@@ -471,7 +473,7 @@ export default function App() {
       const cleanedBytes = new Uint8Array(cleanedBuffer);
       const removedBytes = originalLength - cleanedBytes.length;
       
-      let finalContent = `Scrubbed successfully! Removed ${removedBytes} bytes of hidden metadata/tracking data.`;
+      let finalContent = `**Data Purged:** ${removedBytes} bytes\n\n**Result:** File is mathematically untraceable.`;
       
       // Perform SynthID image detection if requested and applicable
       if (useSynthIdDetect && geminiKey && file.type.startsWith('image/')) {
@@ -514,14 +516,20 @@ export default function App() {
     setPendingFile(null);
     
     const ext = file.name.split('.').pop()?.toLowerCase();
+    const currentSessionId = activeSessionIdRef.current;
+    
+    if (currentSessionId) {
+       updateMessages((prev: Message[]) => [
+         ...prev, 
+         { role: 'xray', content: '', fileName: file.name, xrayReport: scanReport, xrayTime: scanTime }
+       ]);
+    }
     
     if (['png', 'jpeg', 'jpg', 'webp', 'bmp', 'gif', 'pdf', 'docx', 'epub', 'odt', 'svg'].includes(ext || '')) {
       await processFile(file);
     } else if (['txt', 'md', 'json'].includes(ext || '')) {
-      const currentSessionId = activeSessionIdRef.current;
       if (!currentSessionId) return;
       
-      updateMessages((prev: Message[]) => [...prev, { role: 'user', content: `Attached File: ${file.name}` }]);
       try {
          setProcessingSessions(prev => ({ ...prev, [currentSessionId]: true }));
          const text = await file.text();
@@ -531,7 +539,7 @@ export default function App() {
          
          updateMessages((prev: Message[]) => [...prev, { 
             role: 'assistant', 
-            content: `Scrubbed successfully! Applied homoglyph injection and removed metadata formatting.`,
+            content: `**Result:** 0% AI Confidence Score.`,
             isDownloadable: true,
             fileName: file.name,
             fileBytes: cleanedBytes,
@@ -563,6 +571,8 @@ export default function App() {
     setIsScanning(true);
     setScanProgress(0);
     setScanReport({c2pa: false, unicode: false, exif: false});
+
+    updateMessages((prev: Message[]) => [...prev, { role: 'user', content: `Attached File: ${file.name}` }]);
 
     // --- Fast-Pass JS Byte Scanner ---
     // Scans the first 256KB of the file in < 5ms for 100% byte-accurate reporting
@@ -929,70 +939,7 @@ export default function App() {
         
         {/* Chat Feed */}
         <div className="chat-feed">
-          {isScanning ? (
-            <div className="xray-dashboard animate-fade-in" style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '2rem', margin: 'auto 0', alignItems: 'center', justifyContent: 'center' }}>
-              <div className="xray-container" style={{ width: '100%', maxWidth: '500px', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 15px rgba(0, 0, 0, 0.03)' }}>
-                
-                <div className="xray-header" style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-surface-hover)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div className={`status-dot ${scanProgress < 100 ? 'pulse' : ''}`} style={{ width: '8px', height: '8px', borderRadius: '50%', background: scanProgress < 100 ? '#3b82f6' : (scanReport.c2pa || scanReport.exif || scanReport.unicode ? 'var(--danger)' : 'var(--success)') }}></div>
-                    <span style={{ color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 600, fontFamily: 'monospace' }}>
-                      {scanProgress < 100 ? 'FAST-PASS BYTE SCAN' : 'PRE-SCRUB ANALYSIS COMPLETE'}
-                    </span>
-                  </div>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontFamily: 'monospace' }}>
-                    {scanProgress < 100 ? '...' : `${scanTime.toFixed(1)}ms`}
-                  </span>
-                </div>
-                
-                <div className="xray-body" style={{ padding: '1.25rem' }}>
-                  <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
-                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '70%' }}>Target: {pendingFile?.name}</span>
-                    <span>Depth: 256KB</span>
-                  </div>
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontFamily: 'monospace', fontSize: '0.85rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--bg-base)', borderRadius: '6px', border: '1px solid var(--border)' }}>
-                      <span style={{ color: 'var(--text-secondary)' }}>0x63327061 (C2PA)</span>
-                      {scanProgress < 100 ? <span style={{ color: 'var(--text-muted)' }}>SCANNING...</span> : (scanReport.c2pa ? <span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>DETECTED</span> : <span style={{ color: 'var(--success)' }}>CLEAN</span>)}
-                    </div>
-                    
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--bg-base)', borderRadius: '6px', border: '1px solid var(--border)' }}>
-                      <span style={{ color: 'var(--text-secondary)' }}>0x45786966 (EXIF)</span>
-                      {scanProgress < 100 ? <span style={{ color: 'var(--text-muted)' }}>SCANNING...</span> : (scanReport.exif ? <span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>DETECTED</span> : <span style={{ color: 'var(--success)' }}>CLEAN</span>)}
-                    </div>
-                    
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--bg-base)', borderRadius: '6px', border: '1px solid var(--border)' }}>
-                      <span style={{ color: 'var(--text-secondary)' }}>0xE2808B (ZWSP)</span>
-                      {scanProgress < 100 ? <span style={{ color: 'var(--text-muted)' }}>SCANNING...</span> : (scanReport.unicode ? <span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>DETECTED</span> : <span style={{ color: 'var(--success)' }}>CLEAN</span>)}
-                    </div>
-                  </div>
-                  
-                  <div style={{ marginTop: '1.5rem' }}>
-                    {scanProgress < 100 ? (
-                       <div style={{ width: '100%', height: '4px', background: 'var(--border)', borderRadius: '2px', overflow: 'hidden' }}>
-                          <div style={{ width: `${scanProgress}%`, height: '100%', background: '#3b82f6', transition: 'width 0.05s linear' }}></div>
-                       </div>
-                    ) : (
-                      <button 
-                        onClick={executeShatter}
-                        className="shatter-btn"
-                        style={{
-                          width: '100%', padding: '12px', borderRadius: '6px', fontSize: '0.9rem', fontWeight: 'bold', fontFamily: 'var(--font-sans)',
-                          background: (scanReport.c2pa || scanReport.exif || scanReport.unicode) ? 'var(--danger)' : 'var(--text-primary)', 
-                          color: (scanReport.c2pa || scanReport.exif || scanReport.unicode) ? '#fff' : 'var(--bg-surface)',
-                          border: 'none', cursor: 'pointer',
-                          transition: 'all 0.2s',
-                        }}
-                      >
-                        SHATTER WATERMARKS
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : messages.length === 0 ? (
+          {messages.length === 0 && !isScanning ? (
             <div className="empty-state animate-fade-in" style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', flex: 1, padding: '2rem 1rem' }}>
               <div style={{ margin: 'auto 0', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               <h2 style={{ fontSize: '1.75rem', fontWeight: 600, marginBottom: '0.5rem', textAlign: 'center', color: 'var(--text-primary)' }}>Shatter AI Watermarks & Cryptographic Tracking</h2>
@@ -1002,45 +949,148 @@ export default function App() {
               </div>
             </div>
           ) : (
-            messages.map((msg, idx) => (
-              <div key={idx} className={`message-row ${msg.role}`}>
-                <div className="message-content animate-fade-in">
-                  
-                  {/* Avatar */}
-                  {msg.role === 'user' ? (
-                     <div className="avatar user">You</div>
-                  ) : (
-                     <div className="avatar assistant">👻</div>
-                  )}
-
-                  {/* Message Body */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="prose">{renderMessageContent(msg.content)}</div>
+            <>
+              {messages.map((msg, idx) => (
+                <div key={idx} className={`message-row ${msg.role}`}>
+                  <div className="message-content animate-fade-in">
                     
-                    {/* Assistant Actions */}
-                    {msg.role === 'assistant' && (
-                      <div className="msg-actions">
-                        {msg.isDownloadable && msg.fileBytes ? (
-                          <button onClick={() => downloadFile(msg.fileBytes!, msg.fileName!, msg.fileType!)} className="action-btn primary">
-                            <Download size={14} /> Download File
-                          </button>
-                        ) : (
-                          <button onClick={(e) => copyToClipboard(msg.content, e)} className="action-btn icon-only" title="Copy Text">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                          </button>
-                        )}
-                        {!msg.isDownloadable && (
-                          <button onClick={() => handleRetry(idx)} className="action-btn icon-only" title="Retry">
-                            <RotateCcw size={16} />
-                          </button>
-                        )}
-                      </div>
+                    {/* Avatar */}
+                    {msg.role === 'user' ? (
+                       <div className="avatar user">You</div>
+                    ) : (
+                       <div className="avatar assistant">👻</div>
                     )}
-                  </div>
 
+                    {/* Message Body */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {msg.role === 'xray' ? (
+                        <div className="xray-container" style={{ width: '100%', maxWidth: '500px', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 15px rgba(0, 0, 0, 0.03)', marginTop: '0.5rem' }}>
+                          <div className="xray-header" style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-surface-hover)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div className="status-dot" style={{ width: '8px', height: '8px', borderRadius: '50%', background: (msg.xrayReport?.c2pa || msg.xrayReport?.exif || msg.xrayReport?.unicode ? 'var(--danger)' : 'var(--success)') }}></div>
+                              <span style={{ color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 600, fontFamily: 'monospace' }}>PRE-SCRUB ANALYSIS COMPLETE</span>
+                            </div>
+                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontFamily: 'monospace' }}>{msg.xrayTime?.toFixed(1)}ms</span>
+                          </div>
+                          <div className="xray-body" style={{ padding: '1.25rem' }}>
+                            <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '70%' }}>Target: {msg.fileName}</span>
+                              <span>Depth: 256KB</span>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--bg-base)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                                <span style={{ color: 'var(--text-secondary)' }}>0x63327061 (C2PA)</span>
+                                {msg.xrayReport?.c2pa ? <span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>DETECTED</span> : <span style={{ color: 'var(--success)' }}>CLEAN</span>}
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--bg-base)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                                <span style={{ color: 'var(--text-secondary)' }}>0x45786966 (EXIF)</span>
+                                {msg.xrayReport?.exif ? <span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>DETECTED</span> : <span style={{ color: 'var(--success)' }}>CLEAN</span>}
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--bg-base)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                                <span style={{ color: 'var(--text-secondary)' }}>0xE2808B (ZWSP)</span>
+                                {msg.xrayReport?.unicode ? <span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>DETECTED</span> : <span style={{ color: 'var(--success)' }}>CLEAN</span>}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {msg.isDownloadable && (
+                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem', marginTop: '0.2rem' }}>
+                                <ShieldCheck size={22} fill="#3b82f6" color="#fff" strokeWidth={1.5} style={{ borderRadius: '4px' }} />
+                                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)' }}>Scrubbing Complete</h3>
+                             </div>
+                          )}
+                          <div className="prose">{renderMessageContent(msg.content)}</div>
+                          {msg.role === 'assistant' && (
+                            <div className="msg-actions">
+                              {msg.isDownloadable && msg.fileBytes ? (
+                                <button onClick={() => downloadFile(msg.fileBytes!, msg.fileName!, msg.fileType!)} className="action-btn primary">
+                                  <Download size={14} /> Download File
+                                </button>
+                              ) : (
+                                <button onClick={(e) => copyToClipboard(msg.content, e)} className="action-btn icon-only" title="Copy Text">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                </button>
+                              )}
+                              {!msg.isDownloadable && (
+                                <button onClick={() => handleRetry(idx)} className="action-btn icon-only" title="Retry">
+                                  <RotateCcw size={16} />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))
+              ))}
+              
+              {isScanning && (
+                <div className="message-row assistant">
+                  <div className="message-content animate-fade-in">
+                    <div className="avatar assistant pulse-bg">👻</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="xray-container" style={{ width: '100%', maxWidth: '500px', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 15px rgba(0, 0, 0, 0.03)', marginTop: '0.5rem' }}>
+                        <div className="xray-header" style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-surface-hover)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div className={`status-dot ${scanProgress < 100 ? 'pulse' : ''}`} style={{ width: '8px', height: '8px', borderRadius: '50%', background: scanProgress < 100 ? '#3b82f6' : (scanReport.c2pa || scanReport.exif || scanReport.unicode ? 'var(--danger)' : 'var(--success)') }}></div>
+                            <span style={{ color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 600, fontFamily: 'monospace' }}>
+                              {scanProgress < 100 ? 'FAST-PASS BYTE SCAN' : 'PRE-SCRUB ANALYSIS COMPLETE'}
+                            </span>
+                          </div>
+                          <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontFamily: 'monospace' }}>
+                            {scanProgress < 100 ? '...' : `${scanTime.toFixed(1)}ms`}
+                          </span>
+                        </div>
+                        <div className="xray-body" style={{ padding: '1.25rem' }}>
+                          <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '70%' }}>Target: {pendingFile?.name}</span>
+                            <span>Depth: 256KB</span>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--bg-base)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                              <span style={{ color: 'var(--text-secondary)' }}>0x63327061 (C2PA)</span>
+                              {scanProgress < 100 ? <span style={{ color: 'var(--text-muted)' }}>SCANNING...</span> : (scanReport.c2pa ? <span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>DETECTED</span> : <span style={{ color: 'var(--success)' }}>CLEAN</span>)}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--bg-base)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                              <span style={{ color: 'var(--text-secondary)' }}>0x45786966 (EXIF)</span>
+                              {scanProgress < 100 ? <span style={{ color: 'var(--text-muted)' }}>SCANNING...</span> : (scanReport.exif ? <span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>DETECTED</span> : <span style={{ color: 'var(--success)' }}>CLEAN</span>)}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--bg-base)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                              <span style={{ color: 'var(--text-secondary)' }}>0xE2808B (ZWSP)</span>
+                              {scanProgress < 100 ? <span style={{ color: 'var(--text-muted)' }}>SCANNING...</span> : (scanReport.unicode ? <span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>DETECTED</span> : <span style={{ color: 'var(--success)' }}>CLEAN</span>)}
+                            </div>
+                          </div>
+                          <div style={{ marginTop: '1.5rem' }}>
+                            {scanProgress < 100 ? (
+                               <div style={{ width: '100%', height: '4px', background: 'var(--border)', borderRadius: '2px', overflow: 'hidden' }}>
+                                  <div style={{ width: `${scanProgress}%`, height: '100%', background: '#3b82f6', transition: 'width 0.05s linear' }}></div>
+                               </div>
+                            ) : (
+                              <button 
+                                onClick={executeShatter}
+                                className="shatter-btn"
+                                style={{
+                                  width: '100%', padding: '12px', borderRadius: '6px', fontSize: '0.9rem', fontWeight: 'bold', fontFamily: 'var(--font-sans)',
+                                  background: (scanReport.c2pa || scanReport.exif || scanReport.unicode) ? 'var(--danger)' : 'var(--text-primary)', 
+                                  color: (scanReport.c2pa || scanReport.exif || scanReport.unicode) ? '#fff' : 'var(--bg-surface)',
+                                  border: 'none', cursor: 'pointer',
+                                  transition: 'all 0.2s',
+                                }}
+                              >
+                                SHATTER WATERMARKS
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {/* Loading Indicator */}
