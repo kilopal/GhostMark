@@ -2,19 +2,17 @@
 name: ghostmark-clean
 description: >
   Strip AI provenance marks from text and files using the local GhostMark API.
-  Covers invisible Unicode watermarks (zero-width chars, tag characters),
-  C2PA/EXIF/XMP metadata on PNG/JPEG/WebP images, and document metadata on
-  PDF/DOCX files. Use when the user asks to strip watermarks, remove C2PA,
-  clean AI metadata, remove invisible Unicode, or runs /ghostmark-clean.
+  Covers invisible Unicode watermarks, C2PA/EXIF metadata, and statistical LLM 
+  watermarks like Anthropic's SynthID-Text. Use when the user asks to strip 
+  watermarks, shatter SynthID/Claude tracking, remove C2PA, or runs /ghostmark-clean.
 ---
 
-# GhostMark Clean
+# GhostMark Clean (v1.0.1)
 
-Agent skill for stripping AI provenance marks from **text** (invisible Unicode)
+Agent skill for stripping AI provenance marks from **text** (invisible Unicode & SynthID)
 and **files** (C2PA / EXIF / XMP metadata, PDF info dictionaries, DOCX properties).
 
-Read if needed:
-- `references/supported-formats.md` — Which file types are supported and what gets stripped
+GhostMark uses a multi-layered approach to destroy both standard metadata and the newest statistical LLM watermarks (like Anthropic's SynthID).
 
 ## Executable Access
 
@@ -24,53 +22,43 @@ This skill is fully self-contained! The ultra-fast Rust `ghostmark` executable (
 
 For example, if you are reading `~/.gemini/config/skills/ghostmark-clean/SKILL.md`, the binary is at `~/.gemini/config/skills/ghostmark-clean/ghostmark`.
 
-## Workflow
+---
 
-### 1. Classify Input
+## Capabilities & Workflows
 
-Determine the target file type and use the appropriate GhostMark CLI command:
+GhostMark is vastly superior to other watermark removers. It supports several advanced scrubbing methods. You must choose the right tool for the user's prompt.
 
-| Input | Command |
-| --- | --- |
-| `.txt` / `.md` / `.json` / code | `/path/to/ghostmark clean-text --file <input> --output <output>` |
-| `.png` / `.jpg` / `.jpeg` / `.webp` | `/path/to/ghostmark clean-image --input <input> --output <output>` |
-| Directory / batch processing | `/path/to/ghostmark batch-clean --dir <path>` |
+### 1. Basic Fast-Pass (WASM/Rust)
+Strips C2PA metadata from files, and removes invisible Unicode/Zero-Width characters from text in under 5ms.
+- **Images:** `/path/to/ghostmark clean-image --input <in> --output <out>`
+- **Text:** `/path/to/ghostmark clean-text --file <in> --output <out>`
+- **Batch Directory:** `/path/to/ghostmark batch-clean --dir <path>` (Handles PDF, DOCX, EPUB, PNG, JPEG, SVG, Text)
 
-*(Note: GhostMark's `batch-clean` command automatically handles `.pdf`, `.docx`, `.epub`, `.odt`, `.svg`, images, and text files recursively!)*
+### 2. SynthID-Text Shattering
+For defeating statistical LLM watermarking (like Claude or Gemini SynthID). This aggressively perturbs token sequences via synonym swapping, homoglyph injection (Cyrillic mixing), and transition alteration to destroy the mathematical signature.
+- **Command:** `/path/to/ghostmark clean-text --file <in> --output <out> --shatter-synthid`
 
-### 2. Execution
+### 3. Deep Scrub (BYOK Cloud AI)
+Uses cloud providers to execute a "scorched-earth" complete rewrite of the text, guaranteeing 0% AI detection while preserving meaning.
+- **Command:** `/path/to/ghostmark deep-scrub --file <input> --provider <groq|openai|deepseek|gemini>`
+*(Note: Requires the user to have their API key set in environment variables or config).*
 
-**Text (Standard Scrubbing):**
-```bash
-/path/to/ghostmark clean-text --file draft.md --output draft.cleaned.md
-```
+### 4. Local LLM Scrubbing (Ollama)
+Runs a 100% offline text rewrite using a local LLM to defeat statistical watermarks without sending data to the cloud.
+- **Command:** `/path/to/ghostmark ollama --file <in> --model llama3 --output <out>`
 
-**Text (SynthID-Text Defeat / Statistical Humanizer):**
-If you suspect the text contains statistical watermarks like Claude's SynthID-Text, use the `--shatter-synthid` flag to heavily perturb the tokens (synonym swapping, transition changes, etc.) to destroy the watermark sequence:
-```bash
-/path/to/ghostmark clean-text --file draft.md --output draft.cleaned.md --shatter-synthid
-```
+### 5. HTTP Proxy Mode
+Starts a local proxy server that automatically strips AI watermarks from incoming HTTP responses (useful for intercepting API calls from other apps).
+- **Command:** `/path/to/ghostmark proxy --port 8080`
 
-**Text (Deep Rewrite via Ollama):**
-For a completely "scorched-earth" approach that defeats all statistical watermarks by rewriting the entire text locally:
-```bash
-/path/to/ghostmark ollama --file draft.md --model llama3 --output draft.rewritten.md
-```
+---
 
-**Images:**
-```bash
-/path/to/ghostmark clean-image --input photo.jpg --output photo.cleaned.jpg
-```
+## Execution Guide
 
-**Batch / Folders (including PDF/DOCX):**
-```bash
-/path/to/ghostmark batch-clean --dir ./my-files/
-```
-*(You can also pass `--shatter-synthid` to the `batch-clean` command to aggressively perturb all text/markdown files found in the directory).*
+When the user asks you to scrub a file, follow these steps:
 
-### 3. Report
-
-Always state:
-- What files were scrubbed.
-- Output the GhostMark CLI's success messages (which mention what was stripped).
-- Note that GhostMark runs purely locally using memory-safe Rust.
+1. **Identify the Need**: Does the user just want metadata gone (use `clean-image` / `batch-clean`)? Or did they generate text with Claude and want the watermarks gone (use `--shatter-synthid`)?
+2. **Execute the Binary**: Run the absolute path to the binary with the arguments you chose.
+3. **Report**: 
+   - Tell the user exactly which layers of defense were applied (e.g. "Stripped 0x63327061 (C2PA) metadata" or "Applied Cyrillic homoglyph injection and shattered SynthID probabilities").
+   - Emphasize that it ran 100% locally using memory-safe Rust and WASM.
