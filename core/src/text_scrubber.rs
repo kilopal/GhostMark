@@ -311,7 +311,11 @@ fn randomize_common_word(word: &str, rng: &mut Rng) -> String {
     };
     if rng.next_float() < 0.65 && !items.is_empty() {
         let chosen = rng.pick(items);
-        let is_cap = word.chars().next().map(|c| c.is_uppercase()).unwrap_or(false);
+        let is_cap = word
+            .chars()
+            .next()
+            .map(|c| c.is_uppercase())
+            .unwrap_or(false);
         if is_cap {
             let mut chars = chosen.chars();
             match chars.next() {
@@ -742,7 +746,10 @@ mod tests {
         // At least one high-frequency word should have been swapped.
         assert_ne!(input, result);
         // Word count must be preserved (swaps only, no deletions/additions).
-        assert_eq!(input.split_whitespace().count(), result.split_whitespace().count());
+        assert_eq!(
+            input.split_whitespace().count(),
+            result.split_whitespace().count()
+        );
     }
 
     #[test]
@@ -756,9 +763,5 @@ mod tests {
         a.sort_unstable();
         b.sort_unstable();
         assert_eq!(a, b);
-        // Order should differ with more than 4 sentences present.
-        // (Because the shuffle is seeded deterministically, allow it to pass
-        // even if the specific transpositions cancel out.)
-        assert!(input.len() > 0);
     }
 }

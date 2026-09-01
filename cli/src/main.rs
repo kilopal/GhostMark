@@ -330,12 +330,10 @@ async fn main() {
                     std::process::exit(1);
                 })
             } else {
-                input
-                    .clone()
-                    .unwrap_or_else(|| {
-                        eprintln!("No input provided. Pass text, --file <path>, or --demo.");
-                        std::process::exit(1);
-                    })
+                input.clone().unwrap_or_else(|| {
+                    eprintln!("No input provided. Pass text, --file <path>, or --demo.");
+                    std::process::exit(1);
+                })
             };
 
             let report = eval::run_eval(&text, *key);
@@ -393,7 +391,10 @@ async fn main() {
             if report.z_before < eval::Z_THRESHOLD {
                 println!("No statistical watermark detected before scrubbing (z = {:.2}); the pipeline scores are informational only.", report.z_before);
             } else if passing.is_empty() {
-                println!("Result: no pipeline dropped the watermark below z < {:.1}.", eval::Z_THRESHOLD);
+                println!(
+                    "Result: no pipeline dropped the watermark below z < {:.1}.",
+                    eval::Z_THRESHOLD
+                );
             } else {
                 println!("Result: watermark destroyed by: {}", passing.join(", "));
             }

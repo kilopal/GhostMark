@@ -149,10 +149,13 @@ pub fn unigram_entropy(text: &str) -> f64 {
     for t in toks {
         *counts.entry(t).or_insert(0) += 1;
     }
-    -counts.values().map(|&c| {
-        let p = c as f64 / n;
-        p * p.log2()
-    }).sum::<f64>()
+    -counts
+        .values()
+        .map(|&c| {
+            let p = c as f64 / n;
+            p * p.log2()
+        })
+        .sum::<f64>()
 }
 
 // ---------------------------------------------------------------------------
@@ -189,7 +192,10 @@ const SYNONYMS: &[(&str, &[&str])] = &[
 
 fn choose_green(prev: &str, original: &str, key: u64) -> Option<String> {
     // Only substitute real synonyms so the "watermarked" text stays readable.
-    if let Some((_, opts)) = SYNONYMS.iter().find(|(w, _)| w.eq_ignore_ascii_case(original)) {
+    if let Some((_, opts)) = SYNONYMS
+        .iter()
+        .find(|(w, _)| w.eq_ignore_ascii_case(original))
+    {
         for o in opts.iter().copied() {
             if is_green(key, prev, o) {
                 return Some(o.to_string());
@@ -243,7 +249,12 @@ fn rng_bias(key: u64, prev: &str, pos: usize) -> bool {
 fn capitalize_like(chosen: &str, reference: &str) -> String {
     let mut chars = chosen.chars();
     let first = chars.next().unwrap_or(' ');
-    if reference.chars().next().map(|c| c.is_uppercase()).unwrap_or(false) {
+    if reference
+        .chars()
+        .next()
+        .map(|c| c.is_uppercase())
+        .unwrap_or(false)
+    {
         first.to_uppercase().collect::<String>() + chars.as_str()
     } else {
         chosen.to_string()
@@ -388,9 +399,17 @@ mod tests {
             s_wm.z,
             s_wm.tokens
         );
-        assert!(s_wm.green_frac > 0.6, "watermarked green frac {:.2}", s_wm.green_frac);
+        assert!(
+            s_wm.green_frac > 0.6,
+            "watermarked green frac {:.2}",
+            s_wm.green_frac
+        );
         let s_clear = score(SAMPLE, key);
-        assert!(!s_clear.is_hit(), "plain text should not be a hit (z={:.2})", s_clear.z);
+        assert!(
+            !s_clear.is_hit(),
+            "plain text should not be a hit (z={:.2})",
+            s_clear.z
+        );
     }
 
     #[test]
@@ -425,15 +444,14 @@ mod tests {
         // Every (prev, word) context is a unique, independent 50% draw, so
         // green_frac must land near 0.5 and z must be modest.
         let set1 = [
-            "alpha", "bravo", "charlie", "delta", "echo", "foxtrot", "golf",
-            "hotel", "india", "juliet", "kilo", "lima", "mike", "november",
-            "oscar", "papa", "quebec", "romeo", "sierra", "tango",
+            "alpha", "bravo", "charlie", "delta", "echo", "foxtrot", "golf", "hotel", "india",
+            "juliet", "kilo", "lima", "mike", "november", "oscar", "papa", "quebec", "romeo",
+            "sierra", "tango",
         ];
         let set2 = [
-            "amber", "bronze", "cobalt", "denim", "emerald", "falcon", "granite",
-            "hazel", "ivory", "jade", "khaki", "lilac", "mustard", "navy",
-            "olive", "pearl", "quartz", "ruby", "silver", "topaz", "umber",
-            "violet", "wheat", "xenon", "yellow", "zebra",
+            "amber", "bronze", "cobalt", "denim", "emerald", "falcon", "granite", "hazel", "ivory",
+            "jade", "khaki", "lilac", "mustard", "navy", "olive", "pearl", "quartz", "ruby",
+            "silver", "topaz", "umber", "violet", "wheat", "xenon", "yellow", "zebra",
         ];
         let mut text = String::new();
         for g1 in set1 {
@@ -446,7 +464,10 @@ mod tests {
         }
         let words = text.trim_end();
         let s = score(words, 123);
-        assert!(words.split_whitespace().count() >= 500, "sanity: corpus size");
+        assert!(
+            words.split_whitespace().count() >= 500,
+            "sanity: corpus size"
+        );
         assert!(
             (s.green_frac - 0.5).abs() < 0.1,
             "green frac {}",
