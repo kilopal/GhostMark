@@ -2,7 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.0.1] - 2026-08-20
+## [Unreleased]
+### Added
+- **Anthropic Claude Detection Oracle**: Score text against Claude's statistical text watermark (Anthropic's key-holder detection API) before and after scrubbing, mirroring the existing Gemini SynthID oracle. Available via a new **Claude Detect** toggle + API-key field in the Web Playground and Chrome Extension.
+- **Eval Harness** (`ghostmark eval`): A deterministic green/red-list oracle — the same statistical watermark family as SynthID-Text and Claude (Kirchenbauer et al.) — that measures how much each pipeline destroys the token signature. Reports z-scores, green fractions, word fidelity, and entropy under `--demo` or any text/file, with optional oracle key selection.
+- **Token-sequence breaker reframe** (`shatter_synthid_text`): Added dense high-frequency-word perturbation (`pass_token_density`) and adjacent sentence reordering (`pass_sentence_shuffle`) that snaps the context-seeded green-list chain a statistical watermark scores against — moving from tokenizer-cliché removal to a direct attack on the watermark mechanism. Measured: z 4.2 → ~0.9 at ~89% word fidelity on the demo corpus.
+- **Order-invariant fidelity metric**: `eval::word_change_frac` now compares canonical word multisets, so sentence reordering and homoglyph perturbation no longer count as content loss.
+
+### Changed
+- **Honest measurement framing**: README limitations and coverage matrix now reflect that secret-key watermarks can be *attacked and measured* but never *provably removed*, and that the eval harness is GhostMark's own oracle (same family) rather than the vendors' detectors.
+
+### Fixed
+- Removed unused import in `wasm/src/lib.rs` (wasm-bindgen build warning).
 ### Changed
 - **X-Ray UX Improvements**: Upgraded the X-Ray UI to render as a permanent timeline card within the chat history instead of an ephemeral overlay.
 - **Visual Polish**: Replaced markdown emoji headers with native Lucide icons (`ShieldCheck`) for a sleeker final output report.

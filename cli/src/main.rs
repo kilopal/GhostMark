@@ -1,4 +1,5 @@
 use ghostmark_core::document_stripper;
+use ghostmark_core::eval;
 use ghostmark_core::image_stripper;
 use ghostmark_core::text_scrubber;
 mod proxy;
@@ -80,6 +81,24 @@ enum Commands {
         /// Optional output file path
         #[arg(short, long)]
         output: Option<String>,
+    },
+    /// Run the water removal eval harness (green/red-list oracle) on text
+    Eval {
+        /// The text string to evaluate, or a file path if --file is used
+        /// (not needed when --demo is given)
+        input: Option<String>,
+
+        /// Treat the input argument as a file path
+        #[arg(short, long)]
+        file: bool,
+
+        /// Secret key (u64) for the watermark oracle. Defaults to 1
+        #[arg(long, default_value_t = 1)]
+        key: u64,
+
+        /// Also run the built-in demo corpus instead of reading input
+        #[arg(long)]
+        demo: bool,
     },
 }
 
@@ -296,5 +315,99 @@ async fn main() {
                 }
             }
         }
+        Commands::Eval {
+            input,
+            file,
+            key,
+            demo,
+        } => {
+            let text = if *demo {
+                eval::DEMO_CORPUS.to_string()
+            } else if *file {
+                let path = input.as_deref().unwrap_or_default();
+                fs::read_to_string(path).unwrap_or_else(|err| {
+                    eprintln!("Error reading file '{}': {}", path, err);
+                    std::process::exit(1);
+                })
+            } else {
+                input
+                    .clone()
+                    .unwrap_or_else(|| {
+                        eprintln!("No input provided. Pass text, --file <path>, or --demo.");
+                        std::process::exit(1);
+                    })
+            };
+
+            let report = eval::run_eval(&text, *key);
+            println!("🧪 GhostMark Eval Harness");
+            println!("========================");
+            println!(
+                "Corpus   : {} tokens ({} words)",
+                report.tokens, report.tokens
+            );
+            println!("Oracle key: {}", report.key);
+            println!(
+                "Before   : z = {:.2}  (green {:.1}%)  {}{}",
+                report.z_before,
+                report.green_before * 100.0,
+                if report.z_before >= eval::Z_THRESHOLD {
+                    "WATERMARKED"
+                } else {
+                    "no signal"
+                },
+                if report.tokens < 20 {
+                    "  ⚠️  too few tokens for a reliable verdict"
+                } else {
+                    ""
+                }
+            );
+            println!();
+            println!("Pipeline            | z-score | verdict");
+            println!("--------------------|---------|------------------");
+            println!(
+                "Fast WASM scrub     |  {:>5.2}  | {}",
+                report.z_fast,
+                verdict(report.z_fast)
+            );
+            println!(
+                "Fast + Homoglyph    |  {:>5.2}  | {}",
+                report.z_homoglyph,
+                verdict(report.z_homoglyph)
+            );
+            println!(
+                "Shatter SynthID     |  {:>5.2}  | {}",
+                report.z_shatter,
+                verdict(report.z_shatter)
+            );
+            println!();
+            println!(
+                "Fidelity  (shatter): {:.0}% of word tokens preserved",
+                report.fidelity_shatter * 100.0
+            );
+            println!(
+                "Entropy   (shatter): {:.2} → {:.2} bits/token",
+                report.entropy_before, report.entropy_shatter
+            );
+            println!();
+            let passing = report.passing();
+            if report.z_before < eval::Z_THRESHOLD {
+                println!("No statistical watermark detected before scrubbing (z = {:.2}); the pipeline scores are informational only.", report.z_before);
+            } else if passing.is_empty() {
+                println!("Result: no pipeline dropped the watermark below z < {:.1}.", eval::Z_THRESHOLD);
+            } else {
+                println!("Result: watermark destroyed by: {}", passing.join(", "));
+            }
+            println!("Note: this is GhostMark's own green/red-list oracle (same statistical family as SynthID-Text), NOT the vendors' secret-key detectors.");
+        }
+    }
+}
+
+fn verdict(z: f64) -> &'static str {
+    if z >= eval::Z_THRESHOLD {
+        "🔴 WATERMARK"
+    } else if z >= 2.0 {
+        "🟡 weak signal"
+    } else {
+        "🟢 clean"
     }
 }

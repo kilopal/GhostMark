@@ -1,3 +1,6 @@
+# Normalize all text files to LF in the repository (working-tree CRLF is converted on stage)
+* text=auto
+
 # Ignore minified/vendored files in GitHub language statistics
 extension/transformers.min.js linguist-vendored
 

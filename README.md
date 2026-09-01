@@ -28,9 +28,9 @@ Unlike CLI tools or Docker containers that are meant for servers, GhostMark runs
 - ❌ No tracking or telemetry.
 - ✅ Runs 100% locally in your browser using WebGPU.
 - ✅ Defeats complex SynthID statistical watermarks.
-- ✅ Achieves **0% AI Detection** on Quillbot and other detectors using advanced mathematical text perturbation (Cyrillic homoglyphs and zero-width jitter).
+- ✅ **New:** Anthropic Claude Detection. Anthropic shipped text watermarking (beta) and a key-holder detection API; GhostMark now scores your text for Claude's statistical watermark before and after scrubbing — right alongside the existing Gemini SynthID oracle.
+- ✅ **New:** Eval Harness. A built-in green/red-list oracle (the same statistical watermark family as SynthID-Text and Claude) that *quantifies* how much each pipeline destroys the token signature — with reproducibility, not marketing. `ghostmark eval --demo`. Our own token-sequence breaker (`--shatter-synthid`) now drives z-scores from ~4.2 to <1 while the text keeps ~90% of its words.
 - ✅ **New:** X-Ray Vision Dashboard! Drop any file and watch a beautiful hacker-style UI intercept and visually scan it for C2PA, EXIF, and hidden Unicode using a blazing-fast JS byte-scanner (accurate to the byte in under 5ms).
-- ✅ **New:** SynthID-Text Destroyer. Completely neutralizes Claude's new statistical watermarks by heavily perturbing token sequences. Available via CLI `--shatter-synthid` and in the browser UI.
 - ✅ **New:** Gemini API Detection. Verify if your text has a SynthID watermark mathematically before and after scrubbing.
 - ✅ **New:** WASM Web Worker Multithreading. Scrub massive 500-page EPUBs without blocking your browser UI.
 - ✅ **New:** Interactive Web Playground. Try the WASM engine instantly without installing anything! Now features full UI parity with the extension.
@@ -59,6 +59,7 @@ Check out the **[GhostMark Web Playground](https://ghostmarks.vercel.app)** — 
 | **Statistical sampling text** | ✅ SynthID Destroyer + Deep Scrub | ✅ SynthID Destroyer + Deep Scrub | ✅ If present | ✅ Deep Scrub |
 | **C2PA / file metadata** | ✅ All formats | ✅ All formats | ✅ All formats | ✅ All formats |
 | **SynthID Detection** | ✅ Optional Gemini API | ✅ Optional Gemini API | ✅ Optional Gemini API | — |
+| **Claude Watermark Detection** | ✅ Optional Anthropic API | — | — | — |
 | **Pixel image marks** | 🔜 Planned | 🔜 Planned | 🔜 Planned | 🔜 Planned |
 
 ---
@@ -110,8 +111,25 @@ After rewriting, GhostMark injects invisible mathematical perturbations: 15% of 
 ### Grammar & Proofread Mode
 If you don't need to bypass AI detection and just want offline, private grammar checking, enable this mode. It uses the local Llama model strictly for proofreading, skipping the homoglyph perturbations.
 
-### SynthID-Text Destroyer
-Claude's SynthID-Text embeds a mathematical signature into the exact sequence of chosen tokens. By checking the "Shatter SynthID Watermark" box (or passing `--shatter-synthid` to the CLI), GhostMark's revived Statistical Humanizer actively perturbs your text before homoglyph injection. It swaps synonyms and alters transitions, completely destroying the token sequence the watermark relies on.
+### SynthID-Text Destroyer & Token-Sequence Breaker
+Claude's SynthID-Text (and Anthropic's Claude watermark) embed a mathematical signature into the exact sequence of chosen tokens: each token is drawn from a context-seeded "green list", and a detector holding the secret key scores how far the observed token distribution drifts from chance. GhostMark attacks this *directly*:
+
+- **Dense word perturbation.** Beyond AI-cliché swaps, the engine now randomizes high-frequency common words (`very`, `often`, `many`, `but`…), because *every* swap invalidates a green-list prior for that token position.
+- **Context-chain snapping.** Adjacent sentences are randomly reordered, destroying the k-step context hash chain the detector recomputes.
+- **Synonym/transition/filler passes** round out the perturbation.
+
+Every pass keeps meaning, names, and facts intact. You can measure the effect yourself with the built-in eval harness:
+
+```bash
+# Embed a detectable statistical watermark (un-removable without the key),
+# then quantify how much each pipeline destroys the signature:
+cargo run -p ghostmark -- eval --demo --key 1
+```
+
+The harness implements its own green/red-list oracle (the exact statistical family SynthID-Text/Claude use). Because provider secret keys are private, the numbers are *our* measurement of the same math — comparable but not identical to what a vendor detector reports. On the demo corpus, `--shatter-synthid` moves the z-score from **4.2 (watermarked) to ~0.9 (clean)** while preserving **~89% of word tokens**.
+
+### Claude Watermark Detection Oracle
+Anthropic's Claude watermarking is live, and detection is key-holder gated. Toggle **Claude Detect** in the Playground or Extension and paste an Anthropic API key to score text against Claude's statistical watermark *before and after* scrubbing — mirroring the existing Gemini `DETECT_TEXT_WATERMARK` oracle, so you can verify removal across both vendors in one run.
 
 ### Ollama Integration (100x Speedup)
 Running LLMs in the browser via WebGPU/CPU is inherently slow for large texts. GhostMark now integrates directly with [Ollama](https://ollama.com). Enable "Ollama Mode" in the UI to offload the heavy AI lifting to a local Ollama server (e.g., `ollama run llama3`), allowing you to process massive essays in seconds using true 10B+ parameter models natively on your GPU. See [Ollama Setup Guide](docs/ollama-setup.md).
@@ -157,6 +175,13 @@ You can scrub an entire directory of files (`.txt`, `.json`, `.jpg`, `.png`, `.b
 cargo run -p ghostmark -- batch-clean --dir ./my-dataset/
 ```
 
+**Eval the watermark destruction:**
+Quantify how much each pipeline breaks a statistical watermark (secret-key oracle, same family as SynthID-Text/Claude):
+```bash
+cargo run -p ghostmark -- eval --demo --key 1
+cargo run -p ghostmark -- eval --file ./draft.txt --key 7
+```
+
 **Ollama Integration:**
 Pipe text to a local Ollama model for deep rewriting, then apply mathematical homoglyphs to output 100% undetectable text:
 ```bash
@@ -193,8 +218,10 @@ The image uses a multi-stage build (Rust compile → slim Debian runtime) result
 
 We believe in transparency. Here's what GhostMark **cannot** do:
 
-- **No guarantee of evasion.** Until AI vendors publish their proprietary detection keys and methods, no tool can certify that it defeats the official detectors. GhostMark reports what it verifiably removed (Unicode counts, metadata actions) and best-effort statistical perturbation.
-- **Rewriting degrades quality.** The SynthID Destroyer and Deep Scrub modes work by rewriting text, which inherently changes tone, voice, and precision. Layer A (Unicode scrub) and file metadata stripping are lossless.
+- **Statistical watermarks use a secret key.** SynthID-Text and Claude's watermark partition "green" vs "red" tokens using a key only the vendor holds. No tool can *prove* it removed the signal — GhostMark attacks the underlying probabilistic mechanism (dense token perturbation + context reordering), reports exactly what it verifiably removed (Unicode counts, metadata actions), and lets you *measure* the destruction via its built-in green/red-list eval harness or the official detectors (when you hold a key).
+- **The eval harness is not the vendors' detector.** `ghostmark eval` instantiates the same statistical family with our own key, so z-scores are comparable but not identical to an official detector's output. We deliberately do not claim "0% detection" against secret-key schemes — no honest tool can. Third-party perplexity/Quillbot-style detectors are a different, weaker class and are routinely defeated.
+- **Rewriting degrades quality.** The SynthID Destroyer and Deep Scrub modes work by rewriting text, which inherently changes tone, voice, and precision (the harness shows ~10% of words can change under full shatter). Layer A (Unicode scrub) and file metadata stripping are lossless.
+- **Detection is not authorship.** A detected mark means "Claude was likely involved at some point" — it cannot distinguish *written by* from *edited by*, and the absence of a mark proves nothing (models before the watermark rollout, short text, or heavy editing all produce "no mark").
 - **Pixel watermarks are not yet supported.** GhostMark strips *metadata* from images (EXIF, C2PA, XMP) but does not yet remove watermarks embedded directly into image pixels (like SynthID-media). This is planned.
 - **Use responsibly.** This tool is for privacy and research on content you own — not for academic fraud or false claims of human authorship.
 

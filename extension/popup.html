@@ -565,12 +565,21 @@
         <div class="toggle-track"></div>
         <span class="toggle-label">SynthID Detect</span>
       </label>
+      <label class="toggle-row" style="margin-bottom:0;" title="Check Claude text watermarks with Anthropic's detection API">
+        <input type="checkbox" id="anthropicMode" class="toggle-checkbox">
+        <div class="toggle-track"></div>
+        <span class="toggle-label">Claude Detect</span>
+      </label>
     </div>
     <div id="ollamaSettings" style="display:none; justify-content:center; margin-bottom:12px;">
       <input type="text" id="ollamaModel" placeholder="Model (e.g. llama3)" value="llama3" style="background:var(--bg-raised); border:1px solid var(--border-focus); color:var(--text-primary); padding:4px 8px; border-radius:4px; font-size:12px; width:140px; outline:none;">
     </div>
     <div id="geminiSettings" style="display:none; justify-content:center; margin-bottom:12px;">
       <input type="password" id="geminiApiKey" placeholder="Gemini API Key (AIza...)" style="background:var(--bg-raised); border:1px solid var(--border-focus); color:var(--text-primary); padding:4px 8px; border-radius:4px; font-size:12px; width:220px; outline:none;">
+    </div>
+    <div id="anthropicSettings" style="display:none; flex-direction:column; align-items:center; gap:6px; margin-bottom:12px;">
+      <input type="password" id="anthropicApiKey" placeholder="Anthropic API Key (sk-ant-...)" style="background:var(--bg-raised); border:1px solid var(--border-focus); color:var(--text-primary); padding:4px 8px; border-radius:4px; font-size:12px; width:220px; outline:none;">
+      <input type="text" id="anthropicEndpoint" placeholder="Detect endpoint (default: /v1/watermark/detect)" style="background:var(--bg-raised); border:1px solid var(--border-focus); color:var(--text-primary); padding:4px 8px; border-radius:4px; font-size:12px; width:220px; outline:none;">
     </div>
 
     <div class="input-bar">

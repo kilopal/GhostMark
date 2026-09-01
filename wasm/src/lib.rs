@@ -1,6 +1,5 @@
 use ghostmark_core::document_stripper;
 use ghostmark_core::image_stripper;
-use ghostmark_core::text_scrubber;
 use wasm_bindgen::prelude::*;
 
 #[global_allocator]

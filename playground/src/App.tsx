@@ -123,6 +123,8 @@ export default function App() {
   const [openaiKey, setOpenaiKey] = useState(localStorage.getItem('ghostmark_openai_key') || '');
   const [deepseekKey, setDeepseekKey] = useState(localStorage.getItem('ghostmark_deepseek_key') || '');
   const [geminiKey, setGeminiKey] = useState(localStorage.getItem('ghostmark_gemini_key') || '');
+  const [anthropicKey, setAnthropicKey] = useState(localStorage.getItem('ghostmark_anthropic_key') || '');
+  const [useClaudeDetect, setUseClaudeDetect] = useState(false);
   
   const [ollamaUrl, setOllamaUrl] = useState(localStorage.getItem('ghostmark_ollama_url') || 'http://localhost:11434');
   const [ollamaModel, setOllamaModel] = useState(localStorage.getItem('ghostmark_ollama_model') || 'llama3');
@@ -133,9 +135,10 @@ export default function App() {
     localStorage.setItem('ghostmark_openai_key', openaiKey);
     localStorage.setItem('ghostmark_deepseek_key', deepseekKey);
     localStorage.setItem('ghostmark_gemini_key', geminiKey);
+    localStorage.setItem('ghostmark_anthropic_key', anthropicKey);
     localStorage.setItem('ghostmark_ollama_url', ollamaUrl);
     localStorage.setItem('ghostmark_ollama_model', ollamaModel);
-  }, [groqKey, openaiKey, deepseekKey, geminiKey, ollamaUrl, ollamaModel]);
+  }, [groqKey, openaiKey, deepseekKey, geminiKey, anthropicKey, ollamaUrl, ollamaModel]);
 
 
   const [processStatus, setProcessStatus] = useState<string>('Processing...');
@@ -237,6 +240,40 @@ export default function App() {
     }
   };
 
+  const checkClaudeWatermark = async (text: string): Promise<string> => {
+    if (!anthropicKey) return "";
+    if (!text || text.trim().split(/\s+/).length < 150) {
+      return "Inconclusive (text too short; Anthropic recommends ~150+ words)";
+    }
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/watermark/detect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': anthropicKey,
+          'anthropic-version': '2026-08-01'
+        },
+        body: JSON.stringify({ text, content_type: 'text' })
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        if (res.status === 401 || res.status === 403) return "Claude detect: auth denied (key lacks watermark:read scope)";
+        if (res.status === 404) return "Claude detect: endpoint not reachable (spec still rolling out)";
+        return `Claude detect: HTTP ${res.status}${body ? ' · ' + body.slice(0, 80) : ''}`;
+      }
+      const data = await res.json();
+      const z = data.z_score ?? data.confidence;
+      const result = data.detection_result ?? data.result;
+      const parts: string[] = [];
+      if (result) parts.push(String(result));
+      if (z !== undefined && z !== null) parts.push(`z=${typeof z === 'number' ? z.toFixed(2) : z}`);
+      if (data.confidence && typeof data.confidence === 'string') parts.push(`conf=${data.confidence}`);
+      return parts.length ? parts.join(' ') : "Unknown Claude detect response";
+    } catch (err) {
+      return "Claude detect: network error";
+    }
+  };
+
   const checkImageSynthId = async (file: File): Promise<string> => {
     if (!geminiKey) return "";
     try {
@@ -295,6 +332,11 @@ export default function App() {
       if (useSynthIdDetect && geminiKey) {
          updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: 'Checking for SynthID watermark...' }]);
          scoreBefore = await checkSynthId(textToProcess);
+      }
+      let claudeBefore = "";
+      if (useClaudeDetect && anthropicKey) {
+         updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: 'Checking for Claude watermark...' }]);
+         claudeBefore = await checkClaudeWatermark(textToProcess);
       }
       
       // 1. Pre-processing
@@ -419,11 +461,20 @@ export default function App() {
       if (useSynthIdDetect && geminiKey) {
          scoreAfter = await checkSynthId(currentText);
       }
+      let claudeAfter = "";
+      if (useClaudeDetect && anthropicKey) {
+         claudeAfter = await checkClaudeWatermark(currentText);
+      }
 
       let finalMsg = currentText;
+      const detectLines: string[] = [];
       if (useSynthIdDetect && geminiKey) {
-         finalMsg = `[SynthID Analysis]\nBefore Scrubbing: ${scoreBefore}\nAfter Scrubbing: ${scoreAfter}\n\n[Cleaned Text]\n${currentText}`;
+         detectLines.push(`[SynthID Analysis]\nBefore Scrubbing: ${scoreBefore}\nAfter Scrubbing: ${scoreAfter}`);
       }
+      if (useClaudeDetect && anthropicKey) {
+         detectLines.push(`[Claude Watermark Analysis]\nBefore Scrubbing: ${claudeBefore}\nAfter Scrubbing: ${claudeAfter}`);
+      }
+      if (detectLines.length) finalMsg = `${detectLines.join('\n\n')}\n\n[Cleaned Text]\n${currentText}`;
 
       updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: finalMsg }]);
     } catch (err: any) {
@@ -876,6 +927,16 @@ export default function App() {
                     <p className="setting-desc" style={{marginTop: '4px'}}>If set, GhostMark will query Google to verify SynthID removal.</p>
                   </div>
 
+                  <div className="setting-group animate-fade-in" style={{ borderTop: '1px solid var(--border-light)', paddingTop: '15px' }}>
+                    <label className="select-label">Claude Watermark Detection (Anthropic API)</label>
+                    <label className="checkbox-label" style={{ marginBottom: '8px' }}>
+                      <input type="checkbox" checked={useClaudeDetect} onChange={(e) => setUseClaudeDetect(e.target.checked)} />
+                      <span>Enable Claude Detect oracle</span>
+                    </label>
+                    <input type="password" value={anthropicKey} onChange={(e) => setAnthropicKey(e.target.value)} placeholder="sk-ant-..." className="modern-input" />
+                    <p className="setting-desc" style={{marginTop: '4px'}}>Queries Anthropic's token-watermark detection API to score Claude content before/after scrubbing. Requires a key with <code>watermark:read</code> scope.</p>
+                  </div>
+
                   {llmMode === 'cloud' && (
                     <div className="setting-group animate-fade-in">
                       <label className="select-label">Cloud Provider</label>
@@ -1162,6 +1223,17 @@ export default function App() {
               }} />
               <div className="toggle-track"></div>
               <span className="toggle-label">SynthID Detect</span>
+            </label>
+            <label className="toggle-row" title="Check Claude text watermarks with Anthropic's detection API">
+              <input type="checkbox" className="toggle-checkbox" checked={useClaudeDetect} onChange={(e) => {
+                if (e.target.checked && !anthropicKey) {
+                  setShowSettings(true);
+                } else {
+                  setUseClaudeDetect(e.target.checked);
+                }
+              }} />
+              <div className="toggle-track"></div>
+              <span className="toggle-label">Claude Detect</span>
             </label>
           </div>
           <div className="input-wrapper">

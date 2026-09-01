@@ -621,7 +621,7 @@ dependencies = [
 
 [[package]]
 name = "ghostmark"
-version = "0.4.0"
+version = "1.0.0"
 dependencies = [
  "axum",
  "base64",
@@ -636,7 +636,7 @@ dependencies = [
 
 [[package]]
 name = "ghostmark-core"
-version = "0.4.0"
+version = "1.0.0"
 dependencies = [
  "bytes",
  "getrandom 0.4.3",
@@ -647,7 +647,7 @@ dependencies = [
 
 [[package]]
 name = "ghostmark-wasm"
-version = "0.4.0"
+version = "1.0.0"
 dependencies = [
  "ghostmark-core",
  "wasm-bindgen",

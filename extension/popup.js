@@ -97,7 +97,7 @@ async function run() {
     setStatus('Ready', 'success');
 
     // 2. Load chat history & settings
-    chrome.storage.local.get(['chatHistory', 'geminiApiKey'], (result) => {
+    chrome.storage.local.get(['chatHistory', 'geminiApiKey', 'anthropicApiKey', 'anthropicEndpoint'], (result) => {
       if (result.chatHistory) {
         document.getElementById('chatArea').innerHTML = result.chatHistory;
         const chatArea = document.getElementById('chatArea');
@@ -105,6 +105,12 @@ async function run() {
       }
       if (result.geminiApiKey) {
         document.getElementById('geminiApiKey').value = result.geminiApiKey;
+      }
+      if (result.anthropicApiKey) {
+        document.getElementById('anthropicApiKey').value = result.anthropicApiKey;
+      }
+      if (result.anthropicEndpoint) {
+        document.getElementById('anthropicEndpoint').value = result.anthropicEndpoint;
       }
     });
   } catch (e) {
@@ -318,6 +324,46 @@ async function checkSynthId(text) {
   }
 }
 
+// Anthropic Claude watermark detection oracle.
+// Anthropic's endpoint is key-holder gated and the official spec is still rolling out,
+// so the endpoint is configurable and we degrade gracefully to a readable message.
+async function checkClaudeWatermark(text) {
+  const apiKey = document.getElementById('anthropicApiKey').value.trim();
+  if (!apiKey) return "";
+  if (!text || text.trim().split(/\s+/).length < 150) {
+    return "Inconclusive (text too short; Anthropic recommends ~150+ words)";
+  }
+  const endpoint = (document.getElementById('anthropicEndpoint').value.trim() || 'https://api.anthropic.com/v1/watermark/detect');
+
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2026-08-01'
+      },
+      body: JSON.stringify({ text, content_type: 'text' })
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      if (res.status === 401 || res.status === 403) return "Claude detect: auth denied (key lacks watermark:read scope)";
+      if (res.status === 404) return "Claude detect: endpoint not reachable (spec still rolling out)";
+      return `Claude detect: HTTP ${res.status} ${body ? '· ' + body.slice(0, 80) : ''}`;
+    }
+    const data = await res.json();
+    const z = data.z_score ?? data.confidence;
+    const result = data.detection_result ?? data.result;
+    const parts = [];
+    if (result) parts.push(String(result));
+    if (z !== undefined && z !== null) parts.push(`z=${typeof z === 'number' ? z.toFixed(2) : z}`);
+    if (data.confidence && typeof data.confidence === 'string') parts.push(`conf=${data.confidence}`);
+    return parts.length ? parts.join(' ') : "Unknown Claude detect response";
+  } catch (err) {
+    return "Claude detect: network error";
+  }
+}
+
 function appendUserMessage(text) {
   const chatArea = document.getElementById('chatArea');
   const entryDiv = document.createElement('div');
@@ -353,6 +399,7 @@ document.getElementById('scrubBtn').addEventListener('click', async () => {
   const shatterSynthId = document.getElementById('shatterSynthId').checked;
   const grammar = document.getElementById('grammarScrub').checked;
   const useGemini = document.getElementById('geminiMode').checked;
+  const useClaude = document.getElementById('anthropicMode')?.checked;
 
   // 1. Show user message
   appendUserMessage(input);
@@ -366,6 +413,11 @@ document.getElementById('scrubBtn').addEventListener('click', async () => {
     if (useGemini) {
        setStatus('Checking original SynthID...', 'ready');
        scoreBefore = await checkSynthId(input);
+    }
+    if (useClaude) {
+       setStatus('Checking original Claude watermark...', 'ready');
+       const c = await checkClaudeWatermark(input);
+       if (c) scoreBefore = scoreBefore ? `${scoreBefore} | Claude: ${c}` : `Claude: ${c}`;
     }
 
     const originalLen = input.length;
@@ -473,14 +525,19 @@ document.getElementById('scrubBtn').addEventListener('click', async () => {
            setStatus('Checking final SynthID...', 'ready');
            scoreAfter = await checkSynthId(finalCleaned);
         }
+        if (useClaude) {
+           setStatus('Checking final Claude watermark...', 'ready');
+           const c = await checkClaudeWatermark(finalCleaned);
+           if (c) scoreAfter = scoreAfter ? `${scoreAfter} | Claude: ${c}` : `Claude: ${c}`;
+        }
         
         await copyToClipboard(finalCleaned);
         
         const title = grammar ? 'Grammar Corrected' : 'Statistical Watermark Destroyed';
         
         let resultOutput = escapeHtml(finalCleaned);
-        if (useGemini) {
-           resultOutput = `<div style="font-size:12px;color:var(--info);margin-bottom:8px;background:var(--bg-raised);padding:6px;border-radius:4px;"><b>SynthID Before:</b> ${scoreBefore}<br/><b>SynthID After:</b> ${scoreAfter}</div>${resultOutput}`;
+        if (useGemini || useClaude) {
+           resultOutput = `<div style="font-size:12px;color:var(--info);margin-bottom:8px;background:var(--bg-raised);padding:6px;border-radius:4px;"><b>Detect Before:</b> ${scoreBefore}<br/><b>Detect After:</b> ${scoreAfter}</div>${resultOutput}`;
         }
         
         const responseHtml = `
@@ -521,12 +578,17 @@ document.getElementById('scrubBtn').addEventListener('click', async () => {
          setStatus('Checking final SynthID...', 'ready');
          scoreAfter = await checkSynthId(cleaned);
       }
+      if (useClaude) {
+         setStatus('Checking final Claude watermark...', 'ready');
+         const c = await checkClaudeWatermark(cleaned);
+         if (c) scoreAfter = scoreAfter ? `${scoreAfter} | Claude: ${c}` : `Claude: ${c}`;
+      }
       
       await copyToClipboard(cleaned);
       
       let resultOutput = `Cleaned ${removed > 0 ? removed : 0} hidden characters.`;
-      if (useGemini) {
-         resultOutput = `<div style="font-size:12px;color:var(--info);margin-bottom:8px;background:var(--bg-raised);padding:6px;border-radius:4px;"><b>SynthID Before:</b> ${scoreBefore}<br/><b>SynthID After:</b> ${scoreAfter}</div>${resultOutput}`;
+      if (useGemini || useClaude) {
+         resultOutput = `<div style="font-size:12px;color:var(--info);margin-bottom:8px;background:var(--bg-raised);padding:6px;border-radius:4px;"><b>Detect Before:</b> ${scoreBefore}<br/><b>Detect After:</b> ${scoreAfter}</div>${resultOutput}`;
       }
       
       const responseHtml = `
@@ -603,9 +665,20 @@ document.getElementById('geminiMode').addEventListener('change', (e) => {
   document.getElementById('geminiSettings').style.display = e.target.checked ? 'flex' : 'none';
 });
 
+// Anthropic Settings Toggle
+document.getElementById('anthropicMode')?.addEventListener('change', (e) => {
+  document.getElementById('anthropicSettings').style.display = e.target.checked ? 'flex' : 'none';
+});
+
 // Save API key on change
 document.getElementById('geminiApiKey').addEventListener('change', (e) => {
   chrome.storage.local.set({ geminiApiKey: e.target.value.trim() });
+});
+document.getElementById('anthropicApiKey').addEventListener('change', (e) => {
+  chrome.storage.local.set({ anthropicApiKey: e.target.value.trim() });
+});
+document.getElementById('anthropicEndpoint').addEventListener('change', (e) => {
+  chrome.storage.local.set({ anthropicEndpoint: e.target.value.trim() });
 });
 
 // Auto-resize textarea like ChatGPT
