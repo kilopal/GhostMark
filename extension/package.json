@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "vite build && copy node_modules\\onnxruntime-web\\dist\\*.wasm dist\\assets\\ /Y && copy node_modules\\onnxruntime-web\\dist\\*.mjs dist\\assets\\ /Y",
-    "release": "npm run build && powershell Compress-Archive -Path dist, manifest.json, background.js, popup.html, pkg, public -DestinationPath ghostmark-release.zip -Force"
+    "release": "npm run build && powershell Compress-Archive -Path dist, manifest.json, background.js, popup.html, wasm-worker.js, pkg, public -DestinationPath ghostmark-release.zip -Force"
   },
   "keywords": [],
   "author": "",

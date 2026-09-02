@@ -30,6 +30,8 @@
     "https://cdn-lfs.huggingface.co/*",
     "https://cdn-lfs-us-1.huggingface.co/*",
     "https://raw.githubusercontent.com/*",
+    "https://api.anthropic.com/*",
+    "https://generativelanguage.googleapis.com/*",
     "http://localhost:11434/*",
     "http://127.0.0.1:11434/*"
   ],

@@ -10,8 +10,9 @@
 //! deterministic instantiation of the same family: a per-context green/red
 //! list seeded by a key. The reported z-scores are therefore comparable to
 //! what an official key-holder detector would measure, but they are NOT the
-//! vendors' own numbers. Official detectors can be layered on top of this
-//! harness via the CLI (`--gemini-key` / `--anthropic-key`).
+//! vendors' own numbers. Official vendor detectors are layered on top of this
+//! harness in the web UI and browser extension (Gemini SynthID and Anthropic
+//! Claude "detect" toggles), not in the Rust CLI.
 
 /// Green-list detection threshold (z-score ≥ `Z_THRESHOLD` is a strong hit).
 pub const Z_THRESHOLD: f64 = 4.0;
@@ -474,5 +475,77 @@ mod tests {
             s.green_frac
         );
         assert!(s.z.abs() < 4.0, "z {}", s.z);
+    }
+
+    #[test]
+    fn word_change_frac_semantics() {
+        // Identical text -> 0 effort.
+        assert_eq!(word_change_frac("a b c", "a b c"), 0.0);
+        // Reordering is free (change without semantic loss) -> 0 changes.
+        assert_eq!(word_change_frac("a b c", "c a b"), 0.0);
+        // Half the words replaced -> 0.5 changes.
+        let f = word_change_frac("a b c d", "a x c y");
+        assert!((f - 0.5).abs() < 1e-9, "expected 0.5, got {f}");
+        // Reports a *changed* fraction, so fidelity is 1 - f.
+        assert!((1.0 - f - 0.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn canonical_token_folds_homoglyphs() {
+        // Cyrillic look-alikes must collapse onto their ASCII target so
+        // scrubbed tokens still score against the original key.
+        assert_eq!(canonical_token("е"), "e"); // Cyrillic ye
+        assert_eq!(canonical_token("а"), "a"); // Cyrillic a
+        assert_eq!(canonical_token("у"), "y"); // Cyrillic u
+        assert_eq!(canonical_token("plain"), "plain");
+    }
+
+    #[test]
+    fn unigram_entropy_orders_texts() {
+        let repetitive = "the the the the the";
+        let varied = "the quick brown fox jumps over the lazy dog";
+        assert!(
+            unigram_entropy(varied) > unigram_entropy(repetitive),
+            "varied text must have higher entropy"
+        );
+    }
+
+    #[test]
+    fn passing_flags_mark_below_threshold() {
+        let low = EvalReport {
+            key: 1,
+            tokens: 50,
+            z_before: 5.0,
+            z_fast: 3.9,
+            z_homoglyph: 0.2,
+            z_shatter: 0.1,
+            green_before: 0.9,
+            green_shatter: 0.6,
+            fidelity_shatter: 0.5,
+            entropy_before: 7.0,
+            entropy_shatter: 7.2,
+        };
+        assert_eq!(
+            low.passing(),
+            vec!["Fast WASM scrub", "Fast + Homoglyph", "Shatter SynthID"]
+        );
+
+        let safe = EvalReport {
+            z_shatter: Z_THRESHOLD + 0.5,
+            ..low
+        };
+        assert!(safe.passing().contains(&"Fast + Homoglyph"));
+        assert!(!safe.passing().contains(&"Shatter SynthID"));
+    }
+
+    #[test]
+    fn run_eval_pipeline_matches_stats() {
+        let key = 0xBEEF;
+        let r = run_eval(SAMPLE, key);
+        assert_eq!(r.key, key);
+        assert!(r.z_before >= Z_THRESHOLD);
+        assert!(r.tokens > 0);
+        // fidelity is 1 - changed-fraction, so it must stay in [0, 1].
+        assert!((0.0..=1.0).contains(&r.fidelity_shatter));
     }
 }

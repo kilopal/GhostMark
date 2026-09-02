@@ -18,7 +18,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Strips invisible unicode watermarks from text
+    /// Strips invisible unicode + metadata watermarks from text (pass --shatter-synthid for token-sequence destruction)
     CleanText {
         /// The text string to clean, or a file path if --file is used
         input: String,
@@ -82,7 +82,7 @@ enum Commands {
         #[arg(short, long)]
         output: Option<String>,
     },
-    /// Run the water removal eval harness (green/red-list oracle) on text
+    /// Run the watermark-removal eval harness (green/red-list oracle) on text
     Eval {
         /// The text string to evaluate, or a file path if --file is used
         /// (not needed when --demo is given)
@@ -151,7 +151,10 @@ async fn main() {
             }
         }
         Commands::Serve { host, port } => {
-            proxy::start_server(host, *port).await;
+            if let Err(e) = proxy::start_server(host, *port).await {
+                eprintln!("❌ Failed to start server: {}", e);
+                std::process::exit(1);
+            }
         }
         Commands::BatchClean {
             dir,
@@ -192,8 +195,8 @@ async fn main() {
                         || ext == "gif"
                     {
                         // Pass same input and output path for in-place edit
-                        let path_str = path.to_str().unwrap();
-                        if image_stripper::strip_image_metadata(path_str, path_str).is_ok() {
+                        let path_str = path.to_string_lossy();
+                        if image_stripper::strip_image_metadata(&path_str, &path_str).is_ok() {
                             println!("✅ Stripped image metadata: {}", path_str);
                             cleaned_files += 1;
                         }

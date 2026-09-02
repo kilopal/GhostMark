@@ -156,6 +156,9 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const feedEndRef = useRef<HTMLDivElement>(null);
+  const scanIntervalRef = useRef<number | null>(null);
+  const scanTimerRef = useRef<number | null>(null);
+  const scanResultRef = useRef<{ c2pa: boolean, exif: boolean, unicode: boolean }>({ c2pa: false, exif: false, unicode: false });
 
   // Auto-resize textarea
   useEffect(() => {
@@ -526,8 +529,8 @@ export default function App() {
     if (!wasmWorker) return;
     const currentSessionId = activeSessionIdRef.current;
     if (!currentSessionId) return;
-    
-    updateMessages((prev: Message[]) => [...prev, { role: 'user', content: `Attached File: ${file.name}` }]);
+
+    // NOTE: handleFileUpload already appended the "Attached File" user message.
     setProcessingSessions(prev => ({ ...prev, [currentSessionId]: true }));
     
     try {
@@ -538,35 +541,41 @@ export default function App() {
       const cleanedBytes = new Uint8Array(cleanedBuffer);
       const removedBytes = originalLength - cleanedBytes.length;
       
-      let finalContent = `**Data Purged:** ${removedBytes} bytes\n\n**Result:** File is mathematically untraceable.`;
+      let finalContent = `**Data Purged:** ${removedBytes} bytes\n\n**Result:** File cleaned of tracked metadata (C2PA, EXIF, and trailing payloads).`;
       
       // Perform SynthID image detection if requested and applicable
       if (useSynthIdDetect && geminiKey && file.type.startsWith('image/')) {
-         finalContent += "\n\n*Analyzing image for AI watermarks...*";
-         updateMessages((prev: Message[]) => [...prev, { 
-           role: 'assistant', 
-           content: finalContent,
+         const loadingContent = "**Data Purged:** ...\n\n*Analyzing image for AI watermarks...*";
+         updateMessages((prev: Message[]) => [...prev, {
+           role: 'assistant',
+           content: loadingContent,
          }]);
          
          const synthIdResult = await checkImageSynthId(file);
-         finalContent = `Scrubbed successfully! Removed ${removedBytes} bytes of hidden metadata/tracking data.\n\n**SynthID / AI Vision Analysis:**\n${synthIdResult}`;
+         const finalMsg = `Scrubbed successfully! Removed ${removedBytes} bytes of hidden metadata/tracking data.\n\n**SynthID / AI Vision Analysis:**\n${synthIdResult}`;
+         updateMessages((prev: Message[]) => {
+            // Remove only the exact loading message (never a user's later message).
+            const withoutLoading = prev.filter(m => m.content !== loadingContent);
+            return [...withoutLoading, {
+              role: 'assistant',
+              content: finalMsg,
+              isDownloadable: true,
+              fileName: file.name,
+              fileBytes: cleanedBytes,
+              fileType: file.type
+            }];
+         });
+         return;
       }
       
-      // Replace the loading message or add the final download message
-      updateMessages((prev: Message[]) => {
-         const newPrev = [...prev];
-         if (useSynthIdDetect && geminiKey && file.type.startsWith('image/')) {
-             newPrev.pop(); // Remove the temporary loading message
-         }
-         return [...newPrev, { 
-           role: 'assistant', 
-           content: finalContent,
-           isDownloadable: true,
-           fileName: file.name,
-           fileBytes: cleanedBytes,
-           fileType: file.type
-         }];
-      });
+      updateMessages((prev: Message[]) => [...prev, { 
+        role: 'assistant', 
+        content: finalContent,
+        isDownloadable: true,
+        fileName: file.name,
+        fileBytes: cleanedBytes,
+        fileType: file.type
+      }]);
     } catch (err: any) {
       updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: `Error processing file: ${err.message}` }]);
     } finally {
@@ -602,14 +611,14 @@ export default function App() {
          const encoder = new TextEncoder();
          const cleanedBytes = encoder.encode(cleaned);
          
-         updateMessages((prev: Message[]) => [...prev, { 
+updateMessages((prev: Message[]) => [...prev, { 
             role: 'assistant', 
-            content: `**Result:** 0% AI Confidence Score.`,
+            content: `**Result:** Text scrubbed (zero-width characters, Unicode tags, and homoglyph artifacts removed).`,
             isDownloadable: true,
             fileName: file.name,
             fileBytes: cleanedBytes,
             fileType: file.type || 'text/plain'
-         }]);
+          }]);
       } catch (err: any) {
          updateMessages((prev: Message[]) => [...prev, { role: 'assistant', content: `Error processing text file: ${err.message}` }]);
       } finally {
@@ -678,26 +687,34 @@ export default function App() {
 
     setScanTime(timeTaken);
 
-    // Rapid progress bar animation (200ms) to show the UI, then reveal real results
+    // Drive the staged progress animation, then auto-run the scrub. All
+    // timers live behind refs so a new upload (or unmount) never leaks a
+    // running interval and can't fire a stale auto-shatter.
+    if (scanIntervalRef.current) window.clearInterval(scanIntervalRef.current);
+    if (scanTimerRef.current) window.clearTimeout(scanTimerRef.current);
+    scanResultRef.current = { c2pa: hasC2pa, exif: hasExif, unicode: hasUnicode };
     let currentProgress = 0;
-    const interval = setInterval(() => {
+    scanIntervalRef.current = window.setInterval(() => {
        currentProgress += 25;
        setScanProgress(currentProgress);
        if (currentProgress >= 100) {
-          clearInterval(interval);
-          setScanReport({ c2pa: hasC2pa, exif: hasExif, unicode: hasUnicode });
+          if (scanIntervalRef.current) window.clearInterval(scanIntervalRef.current);
+          scanIntervalRef.current = null;
+          setScanReport(scanResultRef.current);
+          scanTimerRef.current = window.setTimeout(() => {
+             scanTimerRef.current = null;
+             executeShatter();
+          }, 1200); // Auto-shatter 1.2s after scan hits 100%
        }
     }, 50);
   };
 
   useEffect(() => {
-    if (isScanning && scanProgress === 100) {
-      const timer = setTimeout(() => {
-        executeShatter();
-      }, 1200); // Auto-shatter 1.2s after scan hits 100%
-      return () => clearTimeout(timer);
-    }
-  }, [isScanning, scanProgress, pendingFile]);
+    return () => {
+      if (scanIntervalRef.current) window.clearInterval(scanIntervalRef.current);
+      if (scanTimerRef.current) window.clearTimeout(scanTimerRef.current);
+    };
+  }, []);
 
   const downloadFile = (bytes: Uint8Array, originalName: string, type: string) => {
     const blob = new Blob([bytes as any], { type });
@@ -923,6 +940,10 @@ export default function App() {
 
                   <div className="setting-group animate-fade-in" style={{ borderTop: '1px solid var(--border-light)', paddingTop: '15px' }}>
                     <label className="select-label">SynthID Watermark Detection (Gemini API)</label>
+                    <label className="checkbox-label" style={{ marginBottom: '8px' }}>
+                      <input type="checkbox" checked={useSynthIdDetect} onChange={(e) => setUseSynthIdDetect(e.target.checked)} />
+                      <span>Enable SynthID detect oracle</span>
+                    </label>
                     <input type="password" value={geminiKey} onChange={(e) => setGeminiKey(e.target.value)} placeholder="AIza..." className="modern-input" />
                     <p className="setting-desc" style={{marginTop: '4px'}}>If set, GhostMark will query Google to verify SynthID removal.</p>
                   </div>
@@ -1004,7 +1025,7 @@ export default function App() {
 
                   <div className="privacy-badge">
                     <CheckCircle2 size={14} color="var(--success)" />
-                    <span>100% Local Browser Execution. No data is sent to our servers.</span>
+                    <span>Core WASM engine runs 100% in your browser. No data is sent to our servers; BYOK/cloud calls happen only when you enable them.</span>
                   </div>
                 </div>
               </div>
@@ -1021,9 +1042,9 @@ export default function App() {
           {messages.length === 0 && !isScanning ? (
             <div className="empty-state animate-fade-in" style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', flex: 1, padding: '2rem 1rem' }}>
               <div style={{ margin: 'auto 0', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <h2 style={{ fontSize: '1.75rem', fontWeight: 600, marginBottom: '0.5rem', textAlign: 'center', color: 'var(--text-primary)' }}>Shatter AI Watermarks & Cryptographic Tracking</h2>
-              <p className="app-description" style={{ textAlign: 'center', color: 'var(--text-secondary)', maxWidth: '540px', marginBottom: '2rem', lineHeight: '1.6', fontSize: '0.95rem' }}>
-                GhostMark 👻 is a high-performance Rust engine that mathematically strips OpenAI, Anthropic, and EU-mandated C2PA signatures directly in your browser. 100% client-side execution. Your files never leave your device.
+              <h2 style={{ fontSize: '1.75rem', fontWeight: 600, marginBottom: '0.5rem', textAlign: 'center', color: 'var(--text-primary)' }}>Shatter AI Watermarks &amp; Cryptographic Tracking</h2>
+              <p className="app-description" style={{ textAlign: 'center', color: 'var(--text-secondary)', maxWidth: '560px', marginBottom: '2rem', lineHeight: '1.6', fontSize: '0.95rem' }}>
+                GhostMark 👻 is a high-performance Rust/WASM engine that strips AI token-sequence watermarks, C2PA signatures, and tracking metadata directly in your browser. Runs entirely client-side unless you opt into a BYOK cloud engine.
               </p>
               </div>
             </div>
@@ -1215,22 +1236,16 @@ export default function App() {
             </label>
             <label className="toggle-row" title="Check SynthID watermarks with Gemini API">
               <input type="checkbox" className="toggle-checkbox" checked={useSynthIdDetect} onChange={(e) => {
-                if (e.target.checked && !geminiKey) {
-                  setShowSettings(true);
-                } else {
-                  setUseSynthIdDetect(e.target.checked);
-                }
+                setUseSynthIdDetect(e.target.checked);
+                if (e.target.checked && !geminiKey) setShowSettings(true);
               }} />
               <div className="toggle-track"></div>
               <span className="toggle-label">SynthID Detect</span>
             </label>
             <label className="toggle-row" title="Check Claude text watermarks with Anthropic's detection API">
               <input type="checkbox" className="toggle-checkbox" checked={useClaudeDetect} onChange={(e) => {
-                if (e.target.checked && !anthropicKey) {
-                  setShowSettings(true);
-                } else {
-                  setUseClaudeDetect(e.target.checked);
-                }
+                setUseClaudeDetect(e.target.checked);
+                if (e.target.checked && !anthropicKey) setShowSettings(true);
               }} />
               <div className="toggle-track"></div>
               <span className="toggle-label">Claude Detect</span>

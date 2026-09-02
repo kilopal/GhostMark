@@ -47,6 +47,19 @@ impl Rng {
     }
 }
 
+/// Deterministic content hash (FNV-1a) used to seed perturbation PRNGs, so
+/// behavior varies with the actual text — not just its byte length, which
+/// lets different inputs of equal length share an identical perturbation
+/// pattern.
+fn content_seed(s: &str) -> u32 {
+    let mut hash: u32 = 0x811C_9DC5;
+    for b in s.as_bytes() {
+        hash ^= *b as u32;
+        hash = hash.wrapping_mul(0x0100_0193);
+    }
+    hash
+}
+
 /// The master humanizer — runs multiple passes to destroy AI statistical patterns (e.g. SynthID-Text).
 pub fn shatter_synthid_text(input: &str) -> String {
     let paragraphs: Vec<&str> = input.split("\n\n").collect();
@@ -58,7 +71,7 @@ pub fn shatter_synthid_text(input: &str) -> String {
             continue;
         }
 
-        let seed = p.len() as u32 ^ 0xDEAD;
+        let seed = content_seed(p) ^ 0xDEAD;
         let mut rng = Rng::new(seed);
 
         let mut text = pass_synonyms(p, &mut rng);
@@ -278,7 +291,8 @@ const GENERAL_SYNONYMS: &[(&str, &[&str])] = &[
     ("give", &["provide"]),
 ];
 
-/// Swap ~35% of high-frequency word occurrences to densify perturbation.
+/// Swap ~65% of high-frequency word occurrences to densify perturbation
+/// (the remaining ~35% stay in place so text keeps reading naturally).
 fn pass_token_density(input: &str, rng: &mut Rng) -> String {
     let mut result = String::with_capacity(input.len() * 2);
     let mut current_word = String::new();
@@ -657,7 +671,7 @@ fn pass_strip_ai_padding(input: &str) -> String {
 /// to break AI tokenizers and sub-word chunking algorithms.
 pub fn apply_homoglyphs(input: &str) -> String {
     let mut result = String::with_capacity(input.len() + input.len() / 5);
-    let seed = input.len() as u32 ^ 0xCAFE;
+    let seed = content_seed(input) ^ 0xCAFE;
     let mut rng = Rng::new(seed);
 
     for c in input.chars() {
@@ -763,5 +777,75 @@ mod tests {
         a.sort_unstable();
         b.sort_unstable();
         assert_eq!(a, b);
+    }
+
+    #[test]
+    fn test_synonyms_swap_cliches() {
+        let input = "The team will utilize the platform.";
+        let mut rng = Rng::new(7);
+        let result = pass_synonyms(input, &mut rng);
+        assert_ne!(input, result);
+        assert!(!result.to_lowercase().contains("utilize"));
+    }
+
+    #[test]
+    fn test_transitions_replaced() {
+        let input = "It is important to note that this works across numerous cases.";
+        let result = pass_transitions(&input.to_lowercase());
+        assert!(!result.contains("it is important to note that"));
+    }
+
+    #[test]
+    fn test_strip_ai_padding_removes_boilerplate() {
+        let input = "In conclusion, this is a great product.";
+        let result = pass_strip_ai_padding(input);
+        assert!(!result.to_lowercase().contains("in conclusion"));
+        // Core meaning stays intact.
+        assert!(result.to_lowercase().contains("great product"));
+    }
+
+    #[test]
+    fn test_burstiness_preserves_words() {
+        let input = "This sentence is very long and it continues with many words and keeps going until it certainly exceeds the splitting threshold of twenty five words.";
+        let mut rng = Rng::new(9);
+        let result = pass_burstiness(input, &mut rng);
+        let mut a: Vec<&str> = input.split_whitespace().collect();
+        let mut b: Vec<&str> = result.split_whitespace().collect();
+        a.sort_unstable();
+        b.sort_unstable();
+        // Burstiness only splits/merges at boundaries; the word multiset is unchanged.
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn test_homoglyphs_actually_use_cyrillic() {
+        // Enough repeated homoglyph-able letters that 15% odds guarantee hits.
+        let input = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        let result = apply_homoglyphs(input);
+        let cyrillic_count = result
+            .chars()
+            .filter(|c| matches!(c, 'а' | 'с' | 'е' | 'о' | 'р' | 'х' | 'у'))
+            .count();
+        assert!(cyrillic_count > 0, "no Cyrillic homoglyphs injected");
+    }
+
+    #[test]
+    fn test_content_seed_differs_by_content_not_length() {
+        let a = content_seed("abcdef");
+        let b = content_seed("bacdef");
+        assert_ne!(a, b);
+        // Same content -> same seed (determinism).
+        assert_eq!(content_seed("ghostmark"), content_seed("ghostmark"));
+    }
+
+    #[test]
+    fn test_shatter_pipeline_runs_end_to_end() {
+        let input = "The use of modern tools can make many hard tasks easy and fast. \
+            Good teams can help people build big things and solve important problems. \
+            Big companies use new technology to improve their products and give better service.";
+        let result = shatter_synthid_text(input);
+        assert!(!result.trim().is_empty());
+        // Meaningful change happened (synonyms, density, transitions, etc.).
+        assert_ne!(input, result);
     }
 }

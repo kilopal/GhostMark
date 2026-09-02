@@ -209,11 +209,125 @@ fn skip_sub_blocks(raw: &[u8], mut pos: usize) -> Result<usize, Box<dyn std::err
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bytes::Bytes;
+    use img_parts::png::Png;
+
+    fn png_signature() -> [u8; 8] {
+        [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
+    }
+
+    fn png_chunk(kind: [u8; 4], contents: &[u8]) -> Vec<u8> {
+        let mut out = Vec::new();
+        out.extend_from_slice(&(contents.len() as u32).to_be_bytes());
+        out.extend_from_slice(&kind);
+        out.extend_from_slice(contents);
+        let mut hasher = crc32fast::Hasher::new();
+        hasher.update(&kind);
+        hasher.update(contents);
+        out.extend_from_slice(&hasher.finalize().to_be_bytes());
+        out
+    }
+
+    fn make_png_with_text() -> Vec<u8> {
+        let mut out = Vec::new();
+        out.extend_from_slice(&png_signature());
+        // IHDR: 1x1 8-bit RGBA
+        let mut ihdr = vec![0u8; 13];
+        ihdr[0] = 0;
+        ihdr[1] = 0;
+        ihdr[2] = 8; // bit depth
+        ihdr[3] = 6; // RGBA
+        out.extend_from_slice(&png_chunk(*b"IHDR", &ihdr));
+        out.extend_from_slice(&png_chunk(*b"tEXt", b"Comment\0AI generated"));
+        out.extend_from_slice(&png_chunk(*b"IDAT", &[0x78, 0x9C, 0x00, 0x00]));
+        out.extend_from_slice(&png_chunk(*b"IEND", &[]));
+        out
+    }
+
+    fn jpeg_segment(marker: u8, payload: &[u8]) -> Vec<u8> {
+        let mut out = vec![0xFF, marker];
+        let len = (payload.len() + 2) as u16;
+        out.extend_from_slice(&len.to_be_bytes());
+        out.extend_from_slice(payload);
+        out
+    }
+
+    fn make_jpeg_with_tracking_segments() -> Vec<u8> {
+        let mut out = vec![0xFF, 0xD8]; // SOI
+        out.extend_from_slice(&jpeg_segment(
+            0xE0,
+            b"JFIF\x00\x01\x02\x00\x00\x01\x00\x00\x01\x00",
+        ));
+        out.extend_from_slice(&jpeg_segment(0xE1, b"Exif\x00\x00TRACKING"));
+        out.extend_from_slice(&jpeg_segment(0xEB, b"C2PA JUMBF data"));
+        out.extend_from_slice(&jpeg_segment(0xED, b"Photoshop 3.0"));
+        out.extend_from_slice(&[0xFF, 0xD9]); // EOI
+        out
+    }
 
     #[test]
-    fn test_image_stripper_signature() {
-        let _ = strip_image_metadata;
-        let _ = strip_image_bytes;
+    fn test_png_strips_text_chunks_keeps_rendering() {
+        let raw = make_png_with_text();
+        let cleaned = strip_image_bytes(&raw).expect("strip ok");
+
+        assert!(
+            cleaned.starts_with(&png_signature()),
+            "output must still be a PNG"
+        );
+        let png = Png::from_bytes(Bytes::from(cleaned)).expect("reparse output PNG");
+        // tEXt / iTXt / eXIf must be gone; IHDR + IDAT + IEND survive.
+        assert!(png.chunk_by_type(*b"tEXt").is_none());
+        assert!(png.chunk_by_type(*b"iTXt").is_none());
+        assert!(png.chunk_by_type(*b"eXIf").is_none());
+        assert!(png.chunk_by_type(*b"c2pa").is_none());
+        assert!(png.chunk_by_type(*b"IHDR").is_some());
+        assert!(png.chunk_by_type(*b"IDAT").is_some());
+        assert!(png.chunk_by_type(*b"IEND").is_some());
+    }
+
+    #[test]
+    fn test_png_unmodified_when_no_metadata() {
+        let mut raw = Vec::new();
+        raw.extend_from_slice(&png_signature());
+        raw.extend_from_slice(&png_chunk(*b"IHDR", &[0; 13]));
+        raw.extend_from_slice(&png_chunk(*b"IDAT", &[0x78, 0x9C, 0x00]));
+        raw.extend_from_slice(&png_chunk(*b"IEND", &[]));
+        let cleaned = strip_image_bytes(&raw).expect("strip ok");
+        // No ancillary chunks to drop -> exactly the 3 critical chunks survive.
+        let png = Png::from_bytes(Bytes::from(cleaned)).expect("valid output");
+        assert_eq!(png.chunks().len(), 3);
+    }
+
+    #[test]
+    fn test_jpeg_strips_app1_app11_app13_keeps_jfif() {
+        let raw = make_jpeg_with_tracking_segments();
+        let cleaned = strip_image_bytes(&raw).expect("strip ok");
+
+        assert!(
+            cleaned.starts_with(&[0xFF, 0xD8]),
+            "output must start at SOI"
+        );
+        assert!(
+            cleaned.windows(4).any(|w| w == b"JFIF"),
+            "harmless JFIF APP0 must survive"
+        );
+        assert!(
+            !cleaned.windows(4).any(|w| w == b"Exif"),
+            "APP1 Exif must be stripped"
+        );
+        assert!(
+            !cleaned.windows(4).any(|w| w == b"JUMB"),
+            "APP11 C2PA/JUMBF must be stripped"
+        );
+        assert!(
+            !cleaned.windows(4).any(|w| w == b"Phot"),
+            "APP13 Photoshop metadata must be stripped"
+        );
+    }
+
+    #[test]
+    fn test_image_stripper_rejects_garbage() {
+        assert!(strip_image_bytes(b"not an image").is_err());
     }
 
     #[test]

@@ -148,7 +148,7 @@ async fn clean_text(Json(payload): Json<CleanTextRequest>) -> impl IntoResponse 
         ok: true,
         original_len,
         cleaned_len,
-        chars_removed: original_len - cleaned_len,
+        chars_removed: original_len.saturating_sub(cleaned_len),
         cleaned,
         elapsed_us: elapsed,
     })
@@ -230,17 +230,26 @@ async fn clean_image(
 
 // ─── Server Entrypoint ───────────────────────────────────────────────────────
 
-pub async fn start_server(host: &str, port: u16) {
-    let app = Router::new()
+/// Builds the axum [`Router`]. Kept separate from [`start_server`] so tests can
+/// drive the routes directly without binding a socket.
+pub fn build_router() -> Router {
+    Router::new()
         .route("/health", get(health))
         .route("/openapi.json", get(openapi))
         .route("/clean/text", post(clean_text))
         .route("/inspect/text", post(inspect_text))
-        .route("/clean/image", post(clean_image));
+        .route("/clean/image", post(clean_image))
+}
 
-    let addr: SocketAddr = format!("{}:{}", host, port)
-        .parse()
-        .expect("Invalid host:port");
+pub async fn start_server(host: &str, port: u16) -> std::io::Result<()> {
+    let app = build_router();
+
+    let addr: SocketAddr = format!("{}:{}", host, port).parse().map_err(|e| {
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            format!("Invalid host:port '{}:{}': {}", host, port, e),
+        )
+    })?;
 
     println!();
     println!("  ██████╗ ██╗  ██╗ ██████╗ ███████╗████████╗███╗   ███╗ █████╗ ██████╗ ██╗  ██╗");
@@ -262,9 +271,104 @@ pub async fn start_server(host: &str, port: u16) {
     println!("    POST /clean/image    → Strip C2PA/Exif metadata from images");
     println!();
 
-    let listener = tokio::net::TcpListener::bind(addr)
-        .await
-        .expect("Failed to bind to address");
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, app).await?;
+    Ok(())
+}
 
-    axum::serve(listener, app).await.expect("Server crashed");
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::body::Body;
+    use axum::http::{Method, Request, StatusCode};
+    use http_body_util::BodyExt;
+    use serde_json::Value;
+    use tower::ServiceExt;
+
+    async fn call(method: Method, uri: &str, body: Body) -> (StatusCode, Value) {
+        let resp = build_router()
+            .oneshot(
+                Request::builder()
+                    .method(method)
+                    .uri(uri)
+                    .header("content-type", "application/json")
+                    .body(body)
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let status = resp.status();
+        let bytes = resp.into_body().collect().await.unwrap().to_bytes();
+        let json = serde_json::from_slice(&bytes).unwrap_or_else(|_| Value::Null);
+        (status, json)
+    }
+
+    fn json_body(value: Value) -> Body {
+        Body::from(value.to_string())
+    }
+
+    #[tokio::test]
+    async fn health_returns_ok() {
+        let (status, json) = call(Method::GET, "/health", Body::empty()).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(json["ok"], true);
+        assert!(json["engine"].as_str().unwrap().starts_with("GhostMark"));
+    }
+
+    #[tokio::test]
+    async fn openapi_is_valid_json() {
+        let (status, json) = call(Method::GET, "/openapi.json", Body::empty()).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(json["openapi"], "3.0.3");
+        assert!(json["paths"]["/clean/text"].is_object());
+    }
+
+    #[tokio::test]
+    async fn clean_text_strips_zero_width_spaces() {
+        let body = json_body(serde_json::json!({ "text": "a\u{200B}b" }));
+        let (status, json) = call(Method::POST, "/clean/text", body).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(json["ok"], true);
+        assert_eq!(json["cleaned"], "ab");
+        assert_eq!(json["chars_removed"], 3);
+    }
+
+    #[tokio::test]
+    async fn clean_text_shatter_mode_runs() {
+        let body = json_body(serde_json::json!({
+            "text": "The use of modern tools can make hard tasks easy.",
+            "shatter_synthid": true
+        }));
+        let (status, json) = call(Method::POST, "/clean/text", body).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(json["ok"], true);
+        assert!(!json["cleaned"].as_str().unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn inspect_text_flags_watermark_chars() {
+        let body = json_body(serde_json::json!({ "text": "a\u{200B}\u{E0061}" }));
+        let (status, json) = call(Method::POST, "/inspect/text", body).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(json["suspicious"], true);
+        assert_eq!(json["total_suspicious"], 2);
+        assert_eq!(json["suspicious_chars"][0]["name"], "Zero Width Space");
+    }
+
+    #[tokio::test]
+    async fn clean_image_rejects_bad_base64() {
+        let body = json_body(serde_json::json!({ "file": "!!!not-base64!!!", "name": "a.png" }));
+        let (status, json) = call(Method::POST, "/clean/image", body).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(json["ok"], false);
+    }
+
+    #[tokio::test]
+    async fn clean_image_rejects_unsupported_format() {
+        let b64 = BASE64.encode(b"definitely not an image");
+        let body = json_body(serde_json::json!({ "file": b64, "name": "a.bin" }));
+        let (status, json) = call(Method::POST, "/clean/image", body).await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(json["ok"], false);
+    }
 }
