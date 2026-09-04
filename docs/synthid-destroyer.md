@@ -13,6 +13,61 @@ When the **Shatter SynthID** mode is enabled, GhostMark runs a "Statistical Huma
 2. **Shifts Transitions**: Alters sentence flow and conjunctions (e.g., *In today's fast-paced world* → *In a fast-moving world*) which shatters the context-window sequences SynthID uses to hide its signature.
 3. **Injects Homoglyphs**: After perturbing the words, Cyrillic homoglyphs are injected, completely destroying the BPE tokenization that the SynthID detector relies on.
 
+## Benchmarking with GhostMark's Own Watermarker
+
+GhostMark includes its own SynthID-compatible watermarker for benchmarking. You can embed watermarks into text and detect them without relying on vendor APIs:
+
+### Embed a Watermark
+```bash
+# Basic embedding
+ghostmark embed "Your text here" --key 42
+
+# With custom parameters
+ghostmark embed "Your text here" --key 42 --green-pct 60 --bias-pct 80
+
+# Using a preset
+ghostmark embed "Your text here" --key 42 --preset stealthy
+```
+
+### Detect a Watermark
+```bash
+# Basic detection
+ghostmark detect "Your text here" --key 42
+
+# With custom green percentage (must match embedding config)
+ghostmark detect "Your text here" --key 42 --green-pct 60
+```
+
+### Batch Benchmarking
+```bash
+# Benchmark across multiple texts
+ghostmark benchmark --dir ./texts/ --key 42
+
+# Use built-in demo corpus
+ghostmark benchmark --demo --key 42
+
+# Custom iterations and preset
+ghostmark benchmark --demo --key 42 --iterations 20 --preset strong
+```
+
+### Configuration Presets
+
+| Preset | Green % | Bias % | Context | Description |
+|--------|---------|--------|---------|-------------|
+| `default` | 50 | 100 | 1 | Balanced watermark strength |
+| `stealthy` | 30 | 60 | 1 | Subtler, harder to detect |
+| `strong` | 70 | 100 | 2 | Stronger signal, easier to detect |
+
+### How the Watermarker Works
+
+The watermarker uses the same Kirchenbauer green/red-list statistical family as SynthID-Text:
+
+1. **Green/Red Partition**: For each token context, the vocabulary is split into "green" (favored) and "red" (disfavored) lists using a secret key.
+2. **Synonym Swapping**: When a word has a synonym that's in the green list, it's swapped to increase the green fraction.
+3. **Detection**: A detector with the same key can measure if the green fraction is significantly higher than expected (z-score > 4.0 indicates a watermark).
+
+The synonym dictionary contains 400+ base words, enabling strong watermark signals while preserving readability.
+
 ## Usage
 
 ### In the Web Playground

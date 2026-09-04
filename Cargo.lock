@@ -653,6 +653,7 @@ name = "ghostmark-wasm"
 version = "1.0.0"
 dependencies = [
  "ghostmark-core",
+ "serde_json",
  "wasm-bindgen",
  "wee_alloc",
 ]

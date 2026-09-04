@@ -6,7 +6,7 @@ GhostMark is built as a highly modular, memory-safe **Cargo Workspace** containi
 The raw, foundational math engine. 
 - **Dependencies**: Only lightweight parsing crates (`img-parts`, `bytes`).
 - **Network**: Zero external I/O.
-- **Role**: Contains `text_scrubber` (for Unicode/Zero-width metadata) and `image_stripper` (for C2PA/Exif manipulation). It operates entirely on raw strings and byte arrays to ensure maximum safety, speed, and cross-platform compatibility (including WASM).
+- **Role**: Contains `text_scrubber` (for Unicode/Zero-width metadata), `eval` (for watermark embedding/detection/benchmarking using the Kirchenbauer green/red-list statistical family), and `image_stripper` (for C2PA/Exif manipulation). It operates entirely on raw strings and byte arrays to ensure maximum safety, speed, and cross-platform compatibility (including WASM).
 
 ## 2. `ghostmark` (CLI / HTTP Proxy)
 The primary backend and terminal application.

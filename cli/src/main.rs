@@ -100,6 +100,78 @@ enum Commands {
         #[arg(long)]
         demo: bool,
     },
+    /// Embed a SynthID-style watermark into text
+    Embed {
+        /// The text string to watermark, or a file path if --file is used
+        input: String,
+
+        /// Treat the input argument as a file path
+        #[arg(short, long)]
+        file: bool,
+
+        /// Secret key (u64) for watermark embedding
+        #[arg(long, default_value_t = 42)]
+        key: u64,
+
+        /// Optional output file path (if not provided, prints to stdout)
+        #[arg(short, long)]
+        output: Option<String>,
+
+        /// Green partition percentage (default: 50)
+        #[arg(long, default_value_t = 50)]
+        green_pct: u32,
+
+        /// Embed bias percentage (default: 100)
+        #[arg(long, default_value_t = 100)]
+        bias_pct: u32,
+
+        /// Preset: default, stealthy, or strong
+        #[arg(long, default_value = "default")]
+        preset: String,
+    },
+    /// Detect whether text contains a SynthID-style watermark
+    Detect {
+        /// The text string to analyze, or a file path if --file is used
+        input: String,
+
+        /// Treat the input argument as a file path
+        #[arg(short, long)]
+        file: bool,
+
+        /// Secret key (u64) for watermark detection
+        #[arg(long, default_value_t = 42)]
+        key: u64,
+
+        /// Green partition percentage (must match embedding config)
+        #[arg(long, default_value_t = 50)]
+        green_pct: u32,
+
+        /// Preset: default, stealthy, or strong
+        #[arg(long, default_value = "default")]
+        preset: String,
+    },
+    /// Batch benchmark: test watermark embed/detect/removal across many texts
+    Benchmark {
+        /// Directory of .txt files to benchmark (or --demo for built-in corpus)
+        #[arg(short, long)]
+        dir: Option<String>,
+
+        /// Use built-in demo corpus
+        #[arg(long)]
+        demo: bool,
+
+        /// Secret key (u64) for watermark
+        #[arg(long, default_value_t = 42)]
+        key: u64,
+
+        /// Number of random keys to test (default: 10)
+        #[arg(long, default_value_t = 10)]
+        iterations: usize,
+
+        /// Preset: default, stealthy, or strong
+        #[arg(long, default_value = "default")]
+        preset: String,
+    },
 }
 
 #[tokio::main]
@@ -402,6 +474,208 @@ async fn main() {
                 println!("Result: watermark destroyed by: {}", passing.join(", "));
             }
             println!("Note: this is GhostMark's own green/red-list oracle (same statistical family as SynthID-Text), NOT the vendors' secret-key detectors.");
+        }
+        Commands::Embed {
+            input,
+            file,
+            key,
+            output,
+            green_pct,
+            bias_pct,
+            preset,
+        } => {
+            let text = if *file {
+                fs::read_to_string(input).unwrap_or_else(|err| {
+                    eprintln!("Error reading file '{}': {}", input, err);
+                    std::process::exit(1);
+                })
+            } else {
+                input.clone()
+            };
+
+            let config = match preset.as_str() {
+                "stealthy" => eval::WatermarkConfig::stealthy(),
+                "strong" => eval::WatermarkConfig::strong(),
+                "custom" => eval::WatermarkConfig {
+                    green_partition_pct: *green_pct,
+                    embed_bias_pct: *bias_pct,
+                    ..Default::default()
+                },
+                _ => eval::WatermarkConfig::default(),
+            };
+
+            let watermarked = eval::embed_watermark_with_config(&text, *key, &config);
+            let stats = eval::score_with_config(&watermarked, *key, &config);
+
+            if let Some(out_path) = output {
+                fs::write(out_path, &watermarked).unwrap_or_else(|err| {
+                    eprintln!("Error writing file '{}': {}", out_path, err);
+                    std::process::exit(1);
+                });
+                println!("✅ Watermarked text saved to {}", out_path);
+            } else {
+                println!("{}", watermarked);
+            }
+
+            eprintln!();
+            eprintln!("Key: {} | Preset: {} | Green: {}% | Bias: {}%",
+                key, preset, config.green_partition_pct, config.embed_bias_pct);
+            eprintln!("Detection: z = {:.2} (green {:.1}%) — {}",
+                stats.z,
+                stats.green_frac * 100.0,
+                if stats.is_hit_with(&config) { "WATERMARKED" } else { "weak signal" });
+        }
+        Commands::Detect {
+            input,
+            file,
+            key,
+            green_pct,
+            preset,
+        } => {
+            let text = if *file {
+                fs::read_to_string(input).unwrap_or_else(|err| {
+                    eprintln!("Error reading file '{}': {}", input, err);
+                    std::process::exit(1);
+                })
+            } else {
+                input.clone()
+            };
+
+            let config = match preset.as_str() {
+                "stealthy" => eval::WatermarkConfig::stealthy(),
+                "strong" => eval::WatermarkConfig::strong(),
+                _ => eval::WatermarkConfig {
+                    green_partition_pct: *green_pct,
+                    ..Default::default()
+                },
+            };
+
+            let (stats, is_hit) = eval::detect_with_config(&text, *key, &config);
+
+            println!("🔍 GhostMark Watermark Detection");
+            println!("================================");
+            println!("Key: {} | Preset: {} | Green: {}%", key, preset, config.green_partition_pct);
+            println!();
+            println!("Tokens analyzed: {}", stats.tokens);
+            println!("Green tokens:   {} ({:.1}%)", stats.green, stats.green_frac * 100.0);
+            println!("z-score:        {:.2}", stats.z);
+            println!("Threshold:      {:.1}", eval::Z_THRESHOLD);
+            println!();
+            if stats.tokens < config.min_tokens {
+                println!("⚠️  Too few tokens for reliable detection (need ≥{})", config.min_tokens);
+            } else if is_hit {
+                println!("🔴 WATERMARK DETECTED — text likely AI-generated");
+            } else if stats.z >= 2.0 {
+                println!("🟡 Weak signal — possible watermark");
+            } else {
+                println!("🟢 No watermark detected");
+            }
+        }
+        Commands::Benchmark {
+            dir,
+            demo,
+            key,
+            iterations,
+            preset,
+        } => {
+            let config = match preset.as_str() {
+                "stealthy" => eval::WatermarkConfig::stealthy(),
+                "strong" => eval::WatermarkConfig::strong(),
+                _ => eval::WatermarkConfig::default(),
+            };
+
+            // Collect texts to benchmark
+            let mut texts: Vec<(String, String)> = Vec::new();
+
+            if *demo {
+                texts.push(("demo".to_string(), eval::DEMO_CORPUS.to_string()));
+            } else if let Some(dir_path) = dir {
+                for entry in WalkDir::new(dir_path)
+                    .into_iter()
+                    .filter_map(|e| e.ok())
+                {
+                    let path = entry.path();
+                    if path.is_file() {
+                        let ext = path
+                            .extension()
+                            .and_then(|e| e.to_str())
+                            .unwrap_or("")
+                            .to_lowercase();
+                        if ext == "txt" || ext == "md" {
+                            if let Ok(text) = fs::read_to_string(path) {
+                                let name = path
+                                    .file_name()
+                                    .unwrap_or_default()
+                                    .to_string_lossy()
+                                    .to_string();
+                                texts.push((name, text));
+                            }
+                        }
+                    }
+                }
+            }
+
+            if texts.is_empty() {
+                eprintln!("No texts found. Use --demo or --dir <path>");
+                std::process::exit(1);
+            }
+
+            println!("🧪 GhostMark SynthID Benchmark");
+            println!("==============================");
+            println!("Texts: {} | Iterations: {} | Preset: {}",
+                texts.len(), iterations, preset);
+            println!("Green: {}% | Bias: {}%",
+                config.green_partition_pct, config.embed_bias_pct);
+            println!("Key: {}", key);
+            println!();
+
+            // Stats tracking
+            let mut embed_success = 0;
+            let mut shatter_success = 0;
+            let mut total_tokens = 0usize;
+            let mut total_z_before = 0.0;
+            let mut total_z_shatter = 0.0;
+            let mut total_fidelity = 0.0;
+
+            for (name, text) in &texts {
+                // Embed watermark
+                let watermarked = eval::embed_watermark_with_config(text, *key, &config);
+                let before_stats = eval::score_with_config(&watermarked, *key, &config);
+
+                // Run full eval pipeline
+                let report = eval::run_eval_with_config(text, *key, &config);
+
+                // Track stats
+                if before_stats.is_hit_with(&config) {
+                    embed_success += 1;
+                }
+                if report.z_shatter < eval::Z_THRESHOLD {
+                    shatter_success += 1;
+                }
+                total_tokens += report.tokens;
+                total_z_before += report.z_before;
+                total_z_shatter += report.z_shatter;
+                total_fidelity += report.fidelity_shatter;
+
+                // Per-text output
+                println!("📄 {}", name);
+                println!("   Tokens: {} | z_before: {:.2} | z_shatter: {:.2} | fidelity: {:.0}%",
+                    report.tokens, report.z_before, report.z_shatter, report.fidelity_shatter * 100.0);
+            }
+
+            // Summary
+            let n = texts.len() as f64;
+            println!();
+            println!("📊 Summary");
+            println!("=========");
+            println!("Embed success:  {}/{} ({:.0}%)",
+                embed_success, texts.len(), embed_success as f64 / n * 100.0);
+            println!("Shatter success: {}/{} ({:.0}%)",
+                shatter_success, texts.len(), shatter_success as f64 / n * 100.0);
+            println!("Avg tokens:     {:.0}", total_tokens as f64 / n);
+            println!("Avg z_before:   {:.2}", total_z_before / n);
+            println!("Avg z_shatter:  {:.2}", total_z_shatter / n);
+            println!("Avg fidelity:   {:.0}%", total_fidelity / n * 100.0);
         }
     }
 }

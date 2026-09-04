@@ -1,7 +1,12 @@
 /* tslint:disable */
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
+export const embed_watermark_configured_wasm: (a: number, b: number, c: bigint, d: number, e: number) => [number, number];
+export const embed_watermark_wasm: (a: number, b: number, c: bigint) => [number, number];
+export const run_eval_wasm: (a: number, b: number, c: bigint) => [number, number];
 export const sanitize_text_wasm: (a: number, b: number, c: number) => [number, number];
+export const score_watermark_configured_wasm: (a: number, b: number, c: bigint, d: number) => [number, number];
+export const score_watermark_wasm: (a: number, b: number, c: bigint) => [number, number];
 export const shatter_synthid_wasm: (a: number, b: number) => [number, number];
 export const strip_docx_metadata_wasm: (a: number, b: number) => [number, number, number, number];
 export const strip_epub_metadata_wasm: (a: number, b: number) => [number, number, number, number];

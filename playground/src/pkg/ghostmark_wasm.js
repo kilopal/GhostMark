@@ -1,6 +1,75 @@
 /* @ts-self-types="./ghostmark_wasm.d.ts" */
 
 /**
+ * Embed a watermark with custom configuration.
+ * green_pct: percentage of vocabulary that is "green" (default 50)
+ * bias_pct: percentage chance to swap red→green (default 100)
+ * @param {string} text
+ * @param {bigint} key
+ * @param {number} green_pct
+ * @param {number} bias_pct
+ * @returns {string}
+ */
+export function embed_watermark_configured_wasm(text, key, green_pct, bias_pct) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.embed_watermark_configured_wasm(ptr0, len0, key, green_pct, bias_pct);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * Embed a SynthID-style watermark into text.
+ * Returns the watermarked text.
+ * @param {string} text
+ * @param {bigint} key
+ * @returns {string}
+ */
+export function embed_watermark_wasm(text, key) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.embed_watermark_wasm(ptr0, len0, key);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * Run the full eval pipeline (embed → scrub → measure).
+ * Returns a JSON string with before/after z-scores and fidelity.
+ * @param {string} text
+ * @param {bigint} key
+ * @returns {string}
+ */
+export function run_eval_wasm(text, key) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.run_eval_wasm(ptr0, len0, key);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
  * @param {string} input
  * @param {boolean} aggressive
  * @returns {string}
@@ -12,6 +81,50 @@ export function sanitize_text_wasm(input, aggressive) {
         const ptr0 = passStringToWasm0(input, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.sanitize_text_wasm(ptr0, len0, aggressive);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * Score with custom configuration.
+ * @param {string} text
+ * @param {bigint} key
+ * @param {number} green_pct
+ * @returns {string}
+ */
+export function score_watermark_configured_wasm(text, key, green_pct) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.score_watermark_configured_wasm(ptr0, len0, key, green_pct);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * Score text for watermark presence. Returns a JSON string with:
+ * { "tokens": N, "green": N, "green_frac": F, "z": F, "is_hit": bool }
+ * @param {string} text
+ * @param {bigint} key
+ * @returns {string}
+ */
+export function score_watermark_wasm(text, key) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.score_watermark_wasm(ptr0, len0, key);
         deferred2_0 = ret[0];
         deferred2_1 = ret[1];
         return getStringFromWasm0(ret[0], ret[1]);

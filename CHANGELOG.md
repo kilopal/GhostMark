@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 ### Added
+- **SynthID-Style Watermarker**: Added standalone `embed` and `detect` CLI commands for watermark embedding and detection without relying on vendor APIs. Uses the same Kirchenbauer green/red-list statistical family as SynthID-Text.
+- **Batch Benchmarking**: Added `benchmark` CLI command to test watermark embed/detect/shatter across multiple texts with configurable iterations and presets.
+- **Configurable Watermark Parameters**: New `WatermarkConfig` struct with configurable green partition percentage, embed bias percentage, context window size, and minimum token threshold. Includes `stealthy` and `strong` presets.
+- **Expanded Synonym Dictionary**: Increased from 22 to 400+ base words across verbs, adjectives, adverbs, prepositions, and common phrases for stronger watermark signals while preserving readability.
 - **Anthropic Claude Detection Oracle**: Score text against Claude's statistical text watermark (Anthropic's key-holder detection API) before and after scrubbing, mirroring the existing Gemini SynthID oracle. Available via a new **Claude Detect** toggle + API-key field in the Web Playground and Chrome Extension.
 - **Eval Harness** (`ghostmark eval`): A deterministic green/red-list oracle — the same statistical watermark family as SynthID-Text and Claude (Kirchenbauer et al.) — that measures how much each pipeline destroys the token signature. Reports z-scores, green fractions, word fidelity, and entropy under `--demo` or any text/file, with optional oracle key selection.
 - **Token-sequence breaker reframe** (`shatter_synthid_text`): Added dense high-frequency-word perturbation (`pass_token_density`) and adjacent sentence reordering (`pass_sentence_shuffle`) that snaps the context-seeded green-list chain a statistical watermark scores against — moving from tokenizer-cliché removal to a direct attack on the watermark mechanism. Measured: z 4.2 → ~0.9 at ~89% word fidelity on the demo corpus.

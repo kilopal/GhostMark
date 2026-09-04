@@ -128,6 +128,32 @@ cargo run -p ghostmark -- eval --demo --key 1
 
 The harness implements its own green/red-list oracle (the exact statistical family SynthID-Text/Claude use). Because provider secret keys are private, the numbers are *our* measurement of the same math — comparable but not identical to what a vendor detector reports. On the demo corpus, `--shatter-synthid` moves the z-score from **4.2 (watermarked) to ~0.9 (clean)** while preserving **~89% of word tokens**.
 
+### SynthID-Style Watermarker (Benchmarking)
+GhostMark includes its own SynthID-compatible watermarker for benchmarking. You can embed watermarks into text and detect them without relying on vendor APIs:
+
+```bash
+# Embed a watermark into text
+cargo run -p ghostmark -- embed "Your text here" --key 42
+
+# Detect if text has a watermark
+cargo run -p ghostmark -- detect "Your text here" --key 42
+
+# Batch benchmark across many texts
+cargo run -p ghostmark -- benchmark --demo --key 42
+```
+
+**Configurable presets:**
+- `--preset default` — 50% green, 100% bias (balanced)
+- `--preset stealthy` — 30% green, 60% bias (subtler, harder to detect)
+- `--preset strong` — 70% green, 100% bias, 2-token context (stronger signal)
+
+**Custom parameters:**
+```bash
+cargo run -p ghostmark -- embed "text" --key 42 --green-pct 60 --bias-pct 80
+```
+
+The synonym dictionary contains 400+ base words across verbs, adjectives, adverbs, and common phrases, enabling strong watermark signals while preserving readability.
+
 ### Claude Watermark Detection Oracle
 Anthropic's Claude watermarking is live, and detection is key-holder gated. Toggle **Claude Detect** in the Playground or Extension and paste an Anthropic API key to score text against Claude's statistical watermark *before and after* scrubbing — mirroring the existing Gemini `DETECT_TEXT_WATERMARK` oracle, so you can verify removal across both vendors in one run.
 
@@ -180,6 +206,19 @@ Quantify how much each pipeline breaks a statistical watermark (secret-key oracl
 ```bash
 cargo run -p ghostmark -- eval --demo --key 1
 cargo run -p ghostmark -- eval --file ./draft.txt --key 7
+```
+
+**Embed & Detect watermarks:**
+Use GhostMark's own SynthID-compatible watermarker for benchmarking:
+```bash
+# Embed a watermark
+cargo run -p ghostmark -- embed "Your text" --key 42
+
+# Detect a watermark
+cargo run -p ghostmark -- detect "Your text" --key 42
+
+# Batch benchmark
+cargo run -p ghostmark -- benchmark --demo --key 42
 ```
 
 **Ollama Integration:**

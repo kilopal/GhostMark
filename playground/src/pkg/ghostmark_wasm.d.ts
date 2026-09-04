@@ -1,7 +1,37 @@
 /* tslint:disable */
 /* eslint-disable */
 
+/**
+ * Embed a watermark with custom configuration.
+ * green_pct: percentage of vocabulary that is "green" (default 50)
+ * bias_pct: percentage chance to swap red→green (default 100)
+ */
+export function embed_watermark_configured_wasm(text: string, key: bigint, green_pct: number, bias_pct: number): string;
+
+/**
+ * Embed a SynthID-style watermark into text.
+ * Returns the watermarked text.
+ */
+export function embed_watermark_wasm(text: string, key: bigint): string;
+
+/**
+ * Run the full eval pipeline (embed → scrub → measure).
+ * Returns a JSON string with before/after z-scores and fidelity.
+ */
+export function run_eval_wasm(text: string, key: bigint): string;
+
 export function sanitize_text_wasm(input: string, aggressive: boolean): string;
+
+/**
+ * Score with custom configuration.
+ */
+export function score_watermark_configured_wasm(text: string, key: bigint, green_pct: number): string;
+
+/**
+ * Score text for watermark presence. Returns a JSON string with:
+ * { "tokens": N, "green": N, "green_frac": F, "z": F, "is_hit": bool }
+ */
+export function score_watermark_wasm(text: string, key: bigint): string;
 
 export function shatter_synthid_wasm(input: string): string;
 
@@ -21,7 +51,12 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
+    readonly embed_watermark_configured_wasm: (a: number, b: number, c: bigint, d: number, e: number) => [number, number];
+    readonly embed_watermark_wasm: (a: number, b: number, c: bigint) => [number, number];
+    readonly run_eval_wasm: (a: number, b: number, c: bigint) => [number, number];
     readonly sanitize_text_wasm: (a: number, b: number, c: number) => [number, number];
+    readonly score_watermark_configured_wasm: (a: number, b: number, c: bigint, d: number) => [number, number];
+    readonly score_watermark_wasm: (a: number, b: number, c: bigint) => [number, number];
     readonly shatter_synthid_wasm: (a: number, b: number) => [number, number];
     readonly strip_docx_metadata_wasm: (a: number, b: number) => [number, number, number, number];
     readonly strip_epub_metadata_wasm: (a: number, b: number) => [number, number, number, number];
